@@ -74,16 +74,16 @@ export NEW_RELIC_LICENSE_KEY=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terra
 # --- CREATE BROWSER APP --
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_browser"
 terraform init
-terraform apply
+terraform apply -auto-approve
 
 # Get the outputs from the browser terraform module
 BROWSER_LICENSE_KEY=$(terraform output -raw browser_license_key)
-BROWSER_JS_CONFIG=$(terraform output -json browser_js_config)
+BROWSER_JS_CONFIG=$(terraform output -raw browser_js_config)
 
-# Parse the JSON config to extract individual values
-APP_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.applicationId')
-TRUST_KEY=$(echo "$BROWSER_JS_CONFIG" | jq -r '.trustKey')
-AGENT_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.agentID')
+# Parse the JSON config to extract individual values from loader_config
+APP_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.applicationID')
+TRUST_KEY=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.trustKey')
+AGENT_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.agentID')
 
 # --- PATCH TEMPLATE --
 # Path to the template file and output file  (TODO: this would be easier with Demo CLI)

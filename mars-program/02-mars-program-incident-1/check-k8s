@@ -1,0 +1,92 @@
+#!/bin/bash
+set -euo pipefail
+
+# Expected answers (lowercase for case-insensitive comparison)
+EXPECTED_SERVICE="productcatalogservice"
+EXPECTED_ISSUE_TYPE="high latency"
+EXPECTED_ROOT_CAUSE="product catalog failure"
+
+# Alternative acceptable answers
+ALT_SERVICE_ANSWERS=("product catalog service" "product-catalog-service" "productcatalog")
+ALT_ISSUE_ANSWERS=("latency" "slow response" "slow performance" "performance degradation")
+ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag enabled")
+
+# Normalize string: lowercase, trim whitespace
+normalize() {
+    echo "$1" | tr '[:upper:]' '[:lower:]' | xargs
+}
+
+# Check if answer matches expected or alternatives
+check_answer() {
+    local answer="$1"
+    local expected="$2"
+    shift 2
+    local alternatives=("$@")
+
+    local normalized_answer=$(normalize "$answer")
+    local normalized_expected=$(normalize "$expected")
+
+    # Check exact match
+    if [[ "$normalized_answer" == "$normalized_expected" ]]; then
+        return 0
+    fi
+
+    # Check alternatives
+    for alt in "${alternatives[@]}"; do
+        local normalized_alt=$(normalize "$alt")
+        if [[ "$normalized_answer" == "$normalized_alt" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Check if answer file exists
+ANSWER_FILE="/tmp/incident1_answers.json"
+if [[ ! -f "$ANSWER_FILE" ]]; then
+    fail-message "❌ No answers submitted yet."
+    exit 1
+fi
+
+# Read answers from JSON file
+SERVICE_ANSWER=$(jq -r '.service // empty' "$ANSWER_FILE")
+ISSUE_TYPE_ANSWER=$(jq -r '.issue_type // empty' "$ANSWER_FILE")
+ROOT_CAUSE_ANSWER=$(jq -r '.root_cause // empty' "$ANSWER_FILE")
+
+# Check if any required field is empty
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]] || [[ -z "$ROOT_CAUSE_ANSWER" ]]; then
+    fail-message "❌ All three questions must be answered."
+    exit 1
+fi
+
+# Validate each answer
+SERVICE_CORRECT=false
+ISSUE_TYPE_CORRECT=false
+ROOT_CAUSE_CORRECT=false
+
+if check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}"; then
+    SERVICE_CORRECT=true
+fi
+
+if check_answer "$ISSUE_TYPE_ANSWER" "$EXPECTED_ISSUE_TYPE" "${ALT_ISSUE_ANSWERS[@]}"; then
+    ISSUE_TYPE_CORRECT=true
+fi
+
+if check_answer "$ROOT_CAUSE_ANSWER" "$EXPECTED_ROOT_CAUSE" "${ALT_ROOT_CAUSE_ANSWERS[@]}"; then
+    ROOT_CAUSE_CORRECT=true
+fi
+
+# Final result
+if $SERVICE_CORRECT && $ISSUE_TYPE_CORRECT && $ROOT_CAUSE_CORRECT; then
+    echo "✅ All answers correct!"
+    exit 0
+else
+    CORRECT_COUNT=0
+    $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $ISSUE_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $ROOT_CAUSE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Try again."
+    exit 1
+fi

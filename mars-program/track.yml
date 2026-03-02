@@ -1,0 +1,28 @@
+slug: mars-program
+id: ogltrds04ckt
+title: M.A.R.S. Program
+teaser: Level up your observability maturity
+description: ""
+icon: ""
+tags:
+- game-day
+owner: newrelic
+developers:
+- bschmitt@newrelic.com
+- staylor@newrelic.com
+- dgomezblanco@newrelic.com
+- reeselee@newrelic.com
+timelimit: 3600
+lab_config:
+  sidebar_enabled: true
+  feedback_recap_enabled: true
+  feedback_tab_enabled: false
+  loadingMessages: true
+  theme:
+    name: modern-dark
+  override_challenge_layout: false
+  hideStopButton: true
+  default_layout: AssignmentLeft
+  default_layout_sidebar_size: 50
+checksum: "14855500064590013938"
+enhanced_loading: false

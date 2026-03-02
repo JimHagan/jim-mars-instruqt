@@ -1,0 +1,8 @@
+version: "3"
+virtualmachines:
+- name: k8s
+  image: instruqt/k3s-v1-33-4
+  environment:
+    IS_OPENSHIFT_CLUSTER: "n"
+    NEW_RELIC_LICENSE_KEY: foo
+  machine_type: n1-standard-4

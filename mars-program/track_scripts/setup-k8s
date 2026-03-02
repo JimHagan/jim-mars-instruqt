@@ -1,0 +1,137 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "Waiting for Instruqt to finish booting the virtual machine..."
+until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]
+do
+    sleep 2
+done
+echo "✅ Host is ready!"
+
+echo "Waiting for Kubernetes API..."
+# Loop until the 'default' service account exists (sign that the API is up)
+until kubectl get serviceaccount default &> /dev/null; do
+  sleep 2
+done
+echo "✅ Cluster is ready!"
+
+echo "Installing OpenTelemetry Demo.."
+git clone https://github.com/newrelic/opentelemetry-demo
+cd opentelemetry-demo/newrelic/scripts
+./install-k8s.sh
+
+echo ""
+echo "Waiting for all pods to be ready..."
+sleep 30 # Wait for pod creation to start
+kubectl wait --for=condition=ready pod --all -n opentelemetry-demo --timeout=600s || true
+
+echo ""
+echo "✅ OpenTelemetry Demo is fully deployed and ready!"
+echo ""
+
+# Create the prompt script in /tmp
+echo "Setting up prompt script..."
+cat > /tmp/prompt_incident1 <<'EOF'
+#!/bin/bash
+
+# Continuous answer submission script for Instruqt track
+# This script allows users to submit and re-edit their answers
+
+ANSWER_FILE="/tmp/incident1_answers.json"
+
+# Display the intro message
+show_intro() {
+    clear
+    echo "╔══════════════════════════════════════════════════════════════════╗"
+    echo "║  🚨 Incident Investigation Answer Submission                     ║"
+    echo "╚══════════════════════════════════════════════════════════════════╝"
+    echo ""
+}
+
+# Collect answers from the user
+collect_answers() {
+    echo "Answer the following questions based on your investigation:"
+    echo ""
+
+    read -p "1. Which service is the root cause? " SERVICE
+    echo ""
+    read -p "2. What type of issue is affecting the service? " ISSUE_TYPE
+    echo ""
+    read -p "3. What is the specific root cause? " ROOT_CAUSE
+    echo ""
+
+    # Save answers to JSON file
+    cat > "$ANSWER_FILE" <<INNER_EOF
+{
+  "service": "$SERVICE",
+  "issue_type": "$ISSUE_TYPE",
+  "root_cause": "$ROOT_CAUSE"
+}
+INNER_EOF
+
+    echo "✅ Answers saved!"
+    echo ""
+}
+
+# Display saved answers
+show_saved_answers() {
+    if [[ -f "$ANSWER_FILE" ]]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📝 Your Current Answers:"
+        echo ""
+
+        # Parse JSON without jq using grep and sed
+        SERVICE=$(grep -o '"service"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
+        ISSUE_TYPE=$(grep -o '"issue_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
+        ROOT_CAUSE=$(grep -o '"root_cause"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
+
+        echo "  1. Service: $SERVICE"
+        echo "  2. Issue Type: $ISSUE_TYPE"
+        echo "  3. Root Cause: $ROOT_CAUSE"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+    fi
+}
+
+# Main loop
+main() {
+    while true; do
+        show_intro
+
+        # Show existing answers if they exist
+        if [[ -f "$ANSWER_FILE" ]]; then
+            show_saved_answers
+            echo "💡 To edit your answers, simply re-enter them below."
+            echo ""
+        fi
+
+        # Collect answers
+        collect_answers
+
+        # Show instructions
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📌 Next Steps:"
+        echo ""
+        echo "   1️⃣  Click the 'Check' button in Instruqt to validate your answers"
+        echo "   2️⃣  Want to edit your answers? Press Enter to continue..."
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+
+        # Wait for user to press Enter to continue editing
+        read -p "Press Enter to edit answers again" CONTINUE
+    done
+}
+
+# Run the main loop
+main
+EOF
+
+chmod +x /tmp/prompt_incident1
+echo "✅ Prompt script ready at /tmp/prompt_incident1"
+
+# Expose the frontend service on port 30080 using NodePort
+echo ""
+echo "Exposing frontend service on port 30080..."
+kubectl patch svc frontend-proxy -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30080,"protocol":"TCP"}]}}'
+echo "✅ Frontend is now accessible on port 30080"

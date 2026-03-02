@@ -1,0 +1,15 @@
+#!/bin/bash
+set -euo pipefail
+
+# Store the working directory before cloning
+WORK_DIR="$(pwd)"
+
+# Destroy browser
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_browser"
+terraform destroy -auto-approve
+
+# Clean up the rest
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
+./cleanup-k8s.sh
+./cleanup-nr-resources.sh
+./cleanup-nr-account.sh

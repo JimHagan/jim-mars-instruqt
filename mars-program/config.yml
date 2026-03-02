@@ -5,11 +5,11 @@ virtualmachines:
   environment:
     IS_OPENSHIFT_CLUSTER: "n"
     NEW_RELIC_LICENSE_KEY: foo
-    NR_SUBACCOUNT_NAME_PREFIX: "MARS - "
+    NR_SUBACCOUNT_NAME_PREFIX: 'MARS - '
     PLAYER_EMAIL_BASE: dgomezblanco@newrelic.com # Used as dgomezblanco+{sandbox_id}@newrelic.com to send invites
-    TF_VAR_newrelic_parent_account_id: 6879196 # Brad Schmitt
+    TF_AUTO_APPROVE: "true"
     TF_VAR_admin_group_name: Admin
-    TF_AUTO_APPROVE: true
+    TF_VAR_newrelic_parent_account_id: "6879196" # Brad Schmitt
   machine_type: n1-standard-4
-  secrets:
-    - name: mars_parent_api_key
+secrets:
+- name: MARS_PARENT_API_KEY

@@ -2,7 +2,7 @@
 slug: mars-program-intro
 id: 8onxikf0rfac
 type: challenge
-title: Mission 1 - Team Setup
+title: Intro
 teaser: Create your team workload and get ready for incident response
 tabs:
 - id: 4wssaltsxrid
@@ -20,7 +20,7 @@ tabs:
   hostname: k8s
   path: /
   port: 30080
-difficulty: basic
+difficulty: ""
 timelimit: 900
 enhanced_loading: null
 ---

@@ -1,8 +1,8 @@
 ---
-slug: mars-program-incident-1
+slug: mars-incident-1-failure
 id: hyun1dpgehs4
 type: challenge
-title: Incident 1
+title: 'Incident 1: Failure'
 teaser: A critical service is experiencing performance issues
 tabs:
 - id: wcivltpnoqh8
@@ -10,17 +10,13 @@ tabs:
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: wavjvto8acrz
-  title: Shell
-  type: terminal
-  hostname: k8s
 - id: dxornyimeuum
   title: Astronomy Shop
   type: service
   hostname: k8s
   path: /
   port: 30080
-difficulty: basic
+difficulty: ""
 timelimit: 1800
 enhanced_loading: null
 ---

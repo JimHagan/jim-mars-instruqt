@@ -12,7 +12,8 @@ developers:
 - staylor@newrelic.com
 - dgomezblanco@newrelic.com
 - reeselee@newrelic.com
-timelimit: 3600
+show_timer: true
+timelimit: 10800
 lab_config:
   sidebar_enabled: true
   feedback_recap_enabled: true
@@ -24,5 +25,5 @@ lab_config:
   hideStopButton: true
   default_layout: AssignmentLeft
   default_layout_sidebar_size: 50
-checksum: "16652864737172721475"
+checksum: "13881030416725325409"
 enhanced_loading: false

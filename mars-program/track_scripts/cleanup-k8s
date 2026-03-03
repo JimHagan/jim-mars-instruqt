@@ -1,15 +1,90 @@
 #!/bin/bash
-set -euo pipefail
+set -uo pipefail  # Remove -e so script continues on errors
 
-# Store the working directory before cloning
+# Store the working directory
 WORK_DIR="$(pwd)"
 
+# Set up parameters (see config.yml for other env variables)
+export TF_VAR_newrelic_api_key="${MARS_PARENT_API_KEY}"
+export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
+export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
+# Construct email as username+participantid@domain.com
+EMAIL_USERNAME="${PLAYER_EMAIL_BASE%@*}"
+EMAIL_DOMAIN="${PLAYER_EMAIL_BASE#*@}"
+export TF_VAR_readonly_user_email="${EMAIL_USERNAME}+${INSTRUQT_PARTICIPANT_ID}@${EMAIL_DOMAIN}"
+export TF_VAR_newrelic_account_id=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_account" && terraform output -raw account_id)
+
+# --- DELETE TEAMS CREATED DURING TRACK ---
+echo "🧹 Cleaning up New Relic teams..."
+
+# Get credentials
+NR_API_KEY="${MARS_PARENT_API_KEY}"
+NR_ACCOUNT_ID="${TF_VAR_newrelic_account_id}"
+
+if [[ -n "$NR_API_KEY" ]]; then
+    # Search for all team entities
+    TEAMS_QUERY='{
+      actor {
+        entitySearch(query: "type = '\''TEAM'\''") {
+          results {
+            entities {
+              guid
+              name
+            }
+          }
+        }
+      }
+    }'
+
+    TEAMS_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+      -H "Content-Type: application/json" \
+      -H "API-Key: ${NR_API_KEY}" \
+      -d "{\"query\": $(echo "$TEAMS_QUERY" | jq -Rs .)}")
+
+    # Get team GUIDs and names
+    TEAM_COUNT=$(echo "$TEAMS_RESPONSE" | jq -r '.data.actor.entitySearch.results.entities | length' 2>/dev/null || echo "0")
+
+    if [[ "$TEAM_COUNT" -gt 0 ]]; then
+        echo "  Found $TEAM_COUNT team(s) to delete"
+
+        # Delete each team
+        echo "$TEAMS_RESPONSE" | jq -r '.data.actor.entitySearch.results.entities[] | "\(.guid)|\(.name)"' | while IFS='|' read -r TEAM_GUID TEAM_NAME; do
+            if [[ -n "$TEAM_GUID" ]] && [[ "$TEAM_GUID" != "null" ]]; then
+                echo "  Deleting team '$TEAM_NAME'..."
+
+                DELETE_MUTATION="mutation { teamDelete(guid: \\\"$TEAM_GUID\\\") { guid } }"
+                DELETE_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+                  -H "Content-Type: application/json" \
+                  -H "API-Key: ${NR_API_KEY}" \
+                  -d "{\"query\": \"$DELETE_MUTATION\"}")
+
+                if echo "$DELETE_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+                    ERROR_MSG=$(echo "$DELETE_RESPONSE" | jq -r '.errors[0].message')
+                    echo "  ⚠️  Failed to delete team '$TEAM_NAME': $ERROR_MSG"
+                else
+                    echo "  ✅ Deleted team '$TEAM_NAME'"
+                fi
+            fi
+        done
+
+        echo "✅ Teams cleanup complete"
+    else
+        echo "  No teams to clean up"
+    fi
+else
+    echo "  New Relic credentials not found, skipping team cleanup"
+fi
+
 # Destroy browser
+echo "🧹 Destroying browser app..."
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_browser"
-terraform destroy -auto-approve
+terraform destroy -auto-approve # TODO: Getting "The agent must not have reporting data for 12 hours before deletion is permitted", although the rest of the detroys (including account) work
 
 # Clean up the rest
+echo "🧹 Running demo cleanup scripts..."
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
 ./cleanup-k8s.sh
 ./cleanup-nr-resources.sh
 ./cleanup-nr-account.sh
+
+echo "✅ Track cleanup complete"

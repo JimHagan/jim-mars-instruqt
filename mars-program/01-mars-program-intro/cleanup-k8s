@@ -1,0 +1,10 @@
+#!/bin/bash
+set -uo pipefail  # No -e flag, script continues on errors
+
+echo "=== Cleaning up Mission 1 - Team Setup ==="
+
+# Clean up answer file
+rm -f /tmp/answers.json
+echo "✅ Answer file cleaned up"
+
+echo "✅ Cleanup complete"

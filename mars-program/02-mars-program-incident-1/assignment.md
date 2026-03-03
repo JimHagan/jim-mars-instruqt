@@ -9,7 +9,7 @@ tabs:
   title: Check
   type: terminal
   hostname: k8s
-  cmd: /tmp/prompt_incident1
+  cmd: /tmp/generic_prompt
 - id: wavjvto8acrz
   title: Shell
   type: terminal
@@ -40,12 +40,16 @@ Use New Relic to investigate this incident and identify:
 
 ## Getting Started
 
-1. The terminal will automatically prompt you to answer investigation questions
-2. Check the alert you will receive on Slack
-3. Use APM, distributed tracing, and other observability tools to investigate
-4. Once you've identified the answers, enter them in the terminal
+1. Check the alert you will receive on Slack
+2. Use New Relic APM, distributed tracing, and other observability tools to investigate
+3. Once you've identified the answers, go to the **Check** terminal tab
+4. Enter your answers in the following format (separated by semi-colons):
+   ```
+   service name; issue type; root cause
+   ```
+   **Example:** `productcatalogservice; high latency; database connection timeout`
 5. Click the **Check** button to validate your answers
-6. If your answers are incorrect, press `Enter` in the terminal to re-submit
+6. If incorrect, you can re-enter your answers in the terminal
 
 ## Important Notes
 

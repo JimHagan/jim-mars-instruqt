@@ -1,0 +1,292 @@
+#!/bin/bash
+set -euo pipefail
+
+# Check if answer file exists
+ANSWER_FILE="/tmp/answers.json"
+if [[ ! -f "$ANSWER_FILE" ]]; then
+    fail-message "❌ No workload name submitted yet. Please enter your workload name in the Check terminal."
+    exit 1
+fi
+
+# Read workload name from JSON file
+WORKLOAD_NAME=$(jq -r '.answer // empty' "$ANSWER_FILE")
+
+# Check if workload name is empty
+if [[ -z "$WORKLOAD_NAME" ]]; then
+    fail-message "❌ Workload name cannot be empty."
+    exit 1
+fi
+
+# Get New Relic credentials from environment
+NR_API_KEY="${MARS_PARENT_API_KEY}"
+NR_ACCOUNT_ID=$(cd opentelemetry-demo/newrelic/terraform/nr_account && terraform output -raw account_id)
+
+if [[ -z "$NR_API_KEY" ]] || [[ -z "$NR_ACCOUNT_ID" ]]; then
+    fail-message "❌ New Relic credentials not found in environment."
+    exit 1
+fi
+
+echo "🔍 Searching for workload '$WORKLOAD_NAME'..."
+
+# GraphQL query to get workload and its entities
+WORKLOAD_QUERY=$(cat <<'GQL'
+{
+  actor {
+    entitySearch(query: "type = 'WORKLOAD' AND name = '%WORKLOAD_NAME%' AND tags.accountId = '%ACCOUNT_ID%'") {
+      results {
+        entities {
+          guid
+          name
+        }
+      }
+    }
+  }
+}
+GQL
+)
+
+# Replace placeholders
+WORKLOAD_QUERY="${WORKLOAD_QUERY//%WORKLOAD_NAME%/$WORKLOAD_NAME}"
+WORKLOAD_QUERY="${WORKLOAD_QUERY//%ACCOUNT_ID%/$NR_ACCOUNT_ID}"
+
+# Make GraphQL request to get workload
+RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$WORKLOAD_QUERY" | jq -Rs .)}")
+
+# Check for errors
+if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$RESPONSE" | jq -r '.errors[0].message // "Unknown error"')
+    fail-message "❌ New Relic API error: $ERROR_MSG"
+    exit 1
+fi
+
+# Check if workload exists
+WORKLOAD_COUNT=$(echo "$RESPONSE" | jq -r '.data.actor.entitySearch.results.entities | length')
+
+if [[ "$WORKLOAD_COUNT" == "0" ]]; then
+    fail-message "❌ Workload '$WORKLOAD_NAME' not found in account $NR_ACCOUNT_ID. Please check the name (case-sensitive)."
+    exit 1
+fi
+
+WORKLOAD_GUID=$(echo "$RESPONSE" | jq -r '.data.actor.entitySearch.results.entities[0].guid')
+
+echo "✅ Found workload: $WORKLOAD_NAME"
+echo "🔍 Checking workload entities..."
+echo "⏳ Waiting for entities to be indexed (this may take a moment)..."
+sleep 5
+
+# Get entities in the account (which should match the workload's entities)
+# Workload was created with query: tags.accountId = 'ACCOUNT_ID'
+ENTITIES_QUERY=$(cat <<'GQL'
+{
+  actor {
+    entitySearch(query: "tags.accountId = '%ACCOUNT_ID%'") {
+      results {
+        entities {
+          guid
+          name
+          type
+          domain
+        }
+      }
+    }
+  }
+}
+GQL
+)
+
+ENTITIES_QUERY="${ENTITIES_QUERY//%ACCOUNT_ID%/$NR_ACCOUNT_ID}"
+
+ENTITIES_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$ENTITIES_QUERY" | jq -Rs .)}")
+
+# Check for errors in entities query
+if echo "$ENTITIES_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$ENTITIES_RESPONSE" | jq -r '.errors[0].message // "Unknown error"')
+    fail-message "❌ Error fetching entities: $ERROR_MSG"
+    exit 1
+fi
+
+# Get entity list
+ENTITIES=$(echo "$ENTITIES_RESPONSE" | jq -r '.data.actor.entitySearch.results.entities // []')
+ENTITY_COUNT=$(echo "$ENTITIES" | jq 'length')
+
+if [[ "$ENTITY_COUNT" == "0" ]] || [[ "$ENTITY_COUNT" == "null" ]]; then
+    fail-message "❌ No entities found in account $NR_ACCOUNT_ID. The workload should contain entities matching: tags.accountId = '$NR_ACCOUNT_ID'"
+    exit 1
+fi
+
+# Check if Checkout Service Availability SLO exists in workload
+CHECKOUT_FOUND=$(echo "$ENTITIES" | jq -r '.[] | select(.name == "Checkout Service Availability") | .name' || echo "")
+
+if [[ -z "$CHECKOUT_FOUND" ]]; then
+    fail-message "❌ Workload '$WORKLOAD_NAME' does not contain the 'Checkout Service Availability' entity. Make sure you added all entities using: tags.accountId = '$NR_ACCOUNT_ID'"
+    exit 1
+fi
+
+echo "✅ Workload has $ENTITY_COUNT entities including Checkout Service Availability"
+
+# Auto-create team with the same name
+echo "🎯 Checking for existing New Relic Team '$WORKLOAD_NAME'..."
+
+# First, check if a team with this name already exists
+CHECK_TEAM_QUERY="{
+  actor {
+    entityManagement {
+      entitySearch(query: \"type = 'TEAM' AND name = '$WORKLOAD_NAME'\") {
+        entities {
+          ... on EntityManagementTeamEntity {
+            id
+            name
+            ownership {
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}"
+
+CHECK_TEAM_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$CHECK_TEAM_QUERY" | jq -Rs .)}")
+
+EXISTING_TEAM_ID=$(echo "$CHECK_TEAM_RESPONSE" | jq -r '.data.actor.entityManagement.entitySearch.entities[0].id // empty')
+EXISTING_OWNERSHIP_ID=$(echo "$CHECK_TEAM_RESPONSE" | jq -r '.data.actor.entityManagement.entitySearch.entities[0].ownership.id // empty')
+
+if [[ -n "$EXISTING_TEAM_ID" ]] && [[ "$EXISTING_TEAM_ID" != "null" ]]; then
+    # Team already exists
+    fail-message "❌ Team with name $WORKLOAD_NAME already exists, choose another one!"
+    exit 1
+fi
+
+# Team doesn't exist, create it
+echo "🎯 Creating New Relic Team '$WORKLOAD_NAME'..."
+
+# Get organization ID for team scope
+ORG_QUERY='{ actor { organization { id } } }'
+ORG_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$ORG_QUERY" | jq -Rs .)}")
+
+ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.data.actor.organization.id // empty')
+
+if [[ -z "$ORG_ID" ]]; then
+    fail-message "❌ Could not get organization ID for team creation"
+    exit 1
+fi
+
+# Create team and get ownership collection ID
+CREATE_TEAM_MUTATION='mutation($teamName: String!, $orgId: ID!) {
+  entityManagementCreateTeam(
+    teamEntity: {
+      name: $teamName,
+      scope: {
+        id: $orgId,
+        type: ORGANIZATION
+      }
+    }
+  ) {
+    entity {
+      id
+      name
+      ownership {
+        id
+      }
+    }
+  }
+}'
+
+# Build the full GraphQL request with variables
+TEAM_REQUEST=$(jq -n \
+  --arg query "$CREATE_TEAM_MUTATION" \
+  --arg teamName "$WORKLOAD_NAME" \
+  --arg orgId "$ORG_ID" \
+  '{query: $query, variables: {teamName: $teamName, orgId: $orgId}}')
+
+TEAM_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "$TEAM_REQUEST")
+
+# Check if team was created successfully
+if echo "$TEAM_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$TEAM_RESPONSE" | jq -r '.errors[0].message')
+    fail-message "❌ Failed to create team '$WORKLOAD_NAME': $ERROR_MSG"
+    exit 1
+else
+    TEAM_ID=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.id // empty')
+    TEAM_NAME=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.name // empty')
+    OWNERSHIP_COLLECTION_ID=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.ownership.id // empty')
+
+    if [[ -z "$TEAM_ID" ]] || [[ "$TEAM_ID" == "null" ]]; then
+        fail-message "❌ Team creation failed - no ID returned"
+        exit 1
+    fi
+
+    if [[ -z "$OWNERSHIP_COLLECTION_ID" ]] || [[ "$OWNERSHIP_COLLECTION_ID" == "null" ]]; then
+        fail-message "❌ Failed to get ownership collection ID from team creation"
+        exit 1
+    fi
+
+    echo "✅ Team '$TEAM_NAME' created with ID: $TEAM_ID"
+    echo "✅ Ownership collection ID: $OWNERSHIP_COLLECTION_ID"
+fi
+
+# Now add the workload and all non-infrastructure entities to the team's ownership collection
+echo "🔗 Adding workload and entities to team..."
+
+# Filter out infrastructure entities (domain = "INFRA") and get all non-infrastructure GUIDs
+NON_INFRA_GUIDS=$(echo "$ENTITIES" | jq -r '[.[] | select(.domain != "INFRA") | .guid]')
+NON_INFRA_COUNT=$(echo "$NON_INFRA_GUIDS" | jq 'length')
+
+echo "  Found $NON_INFRA_COUNT non-infrastructure entities to add"
+
+# Create array of GUIDs to add (workload + all non-infrastructure entities)
+# The workload GUID might already be in the list, but that's okay - New Relic will handle duplicates
+ENTITIES_TO_ADD=$(echo "$NON_INFRA_GUIDS" | jq --arg wguid "$WORKLOAD_GUID" '. + [$wguid] | unique')
+
+echo "  Total entities to add (including workload): $(echo "$ENTITIES_TO_ADD" | jq 'length')"
+
+# Use entityManagementAddCollectionMembers to add entities to the ownership collection
+ADD_ENTITIES_MUTATION='mutation($collectionId: ID!, $ids: [ID!]!) {
+  entityManagementAddCollectionMembers(collectionId: $collectionId, ids: $ids)
+}'
+
+ADD_REQUEST=$(jq -n \
+  --arg query "$ADD_ENTITIES_MUTATION" \
+  --arg collectionId "$OWNERSHIP_COLLECTION_ID" \
+  --argjson ids "$ENTITIES_TO_ADD" \
+  '{query: $query, variables: {collectionId: $collectionId, ids: $ids}}')
+
+ADD_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "$ADD_REQUEST")
+
+echo "  Add entities response: $(echo "$ADD_RESPONSE" | jq -c '.')"
+
+if echo "$ADD_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$ADD_RESPONSE" | jq -r '.errors[0].message')
+    fail-message "❌ Failed to add entities to team: $ERROR_MSG"
+    exit 1
+else
+    ADDED_COUNT=$(echo "$ENTITIES_TO_ADD" | jq 'length')
+    echo "✅ Added $ADDED_COUNT entities to team (workload + all non-infrastructure entities)"
+fi
+
+# Success!
+echo ""
+echo "═══════════════════════════════════════════════════════════════════"
+echo "✅ Perfect! Workload '$WORKLOAD_NAME' is properly configured!"
+echo "🎯 Contains $ENTITY_COUNT entities including checkoutservice"
+echo "🏆 Your team is ready to respond to incidents!"
+echo "═══════════════════════════════════════════════════════════════════"
+exit 0

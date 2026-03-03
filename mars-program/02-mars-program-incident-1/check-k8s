@@ -43,20 +43,38 @@ check_answer() {
 }
 
 # Check if answer file exists
-ANSWER_FILE="/tmp/incident1_answers.json"
+ANSWER_FILE="/tmp/answers.json"
 if [[ ! -f "$ANSWER_FILE" ]]; then
-    fail-message "❌ No answers submitted yet."
+    fail-message "❌ No answers submitted yet. Please enter your answers in the Check terminal."
     exit 1
 fi
 
-# Read answers from JSON file
-SERVICE_ANSWER=$(jq -r '.service // empty' "$ANSWER_FILE")
-ISSUE_TYPE_ANSWER=$(jq -r '.issue_type // empty' "$ANSWER_FILE")
-ROOT_CAUSE_ANSWER=$(jq -r '.root_cause // empty' "$ANSWER_FILE")
+# Read answer from JSON file (format: {"answer": "service; issue; cause"})
+FULL_ANSWER=$(jq -r '.answer // empty' "$ANSWER_FILE")
 
-# Check if any required field is empty
+# Check if answer is empty
+if [[ -z "$FULL_ANSWER" ]]; then
+    fail-message "❌ Answer cannot be empty."
+    exit 1
+fi
+
+# Parse semi-colon separated answer
+IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
+
+# Check if we have exactly 3 parts
+if [[ ${#ANSWERS[@]} -ne 3 ]]; then
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: service; issue type; root cause"
+    exit 1
+fi
+
+# Extract and trim each answer
+SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
+ISSUE_TYPE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
+ROOT_CAUSE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+
+# Check if any part is empty
 if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]] || [[ -z "$ROOT_CAUSE_ANSWER" ]]; then
-    fail-message "❌ All three questions must be answered."
+    fail-message "❌ All three parts must be filled. Format: service; issue type; root cause"
     exit 1
 fi
 
@@ -79,7 +97,8 @@ fi
 
 # Final result
 if $SERVICE_CORRECT && $ISSUE_TYPE_CORRECT && $ROOT_CAUSE_CORRECT; then
-    echo "✅ All answers correct!"
+    echo "✅ All answers correct! Incident resolved."
+    echo "🎯 Root cause: $SERVICE_ANSWER experiencing $ISSUE_TYPE_ANSWER due to $ROOT_CAUSE_ANSWER"
     exit 0
 else
     CORRECT_COUNT=0
@@ -87,6 +106,6 @@ else
     $ISSUE_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
     $ROOT_CAUSE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
 
-    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Try again."
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again."
     exit 1
 fi

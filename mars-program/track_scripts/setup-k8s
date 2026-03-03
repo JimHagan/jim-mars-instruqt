@@ -1,77 +1,60 @@
 #!/bin/bash
 set -euo pipefail
 
-# --- HOST & K8S PRE-FLIGHT CHECKS ---
-echo "Waiting for Instruqt to finish booting the virtual machine..."
+# --- HOST CHECKS & CONFIG ---
+echo "Ensure host and env are ready..."
 until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]
 do
     sleep 2
 done
-echo "✅ Host is ready!"
-
-echo "Waiting for Kubernetes API..."
-# Loop until the 'default' service account exists (sign that the API is up)
-until kubectl get serviceaccount default &> /dev/null; do
-  sleep 2
-done
-echo "✅ Cluster is ready!"
 
 # Store the working directory before cloning
 WORK_DIR="$(pwd)"
 
-# --- INSTALL DEPENDENCIES (Terraform, jq, curl, go) ---
-echo "Checking and installing dependencies..."
-
-# Install jq and curl if missing
-if ! command -v jq &> /dev/null || ! command -v curl &> /dev/null; then
-  echo "Installing curl and jq..."
-  sudo apt-get update && sudo apt-get install -y curl jq
-fi
-
-# Install Terraform (v1.4+)
-if ! command -v terraform &> /dev/null; then
-  echo "Terraform not found. Installing from HashiCorp repo..."
-  sudo apt-get update && sudo apt-get install -y gnupg software-properties-common
-  # Install HashiCorp's GPG key.
-  wget -O- https://apt.releases.hashicorp.com/gpg | \
-  gpg --dearmor | \
-  sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
-  # Verify the GPG key's fingerprint.
-  gpg --no-default-keyring \
-  --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg \
-  --fingerprint
-  # Add the official HashiCorp repository to your system.
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
-  # Update apt to download the package information from the HashiCorp repository.
-  sudo apt update
-  # Install Terraform from the new repository.
-  sudo apt-get install terraform
-
-else
-  echo "✅ Terraform is already installed."
-fi
-
-# --- CLONE REPO ---
-echo "Installing OpenTelemetry Demo.."
-git clone https://github.com/newrelic/opentelemetry-demo
-
 # Set up parameters (see config.yml for other env variables)
 export TF_VAR_newrelic_api_key="${MARS_PARENT_API_KEY}"
 export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
-export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - ReadOnly"
+export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
 # Construct email as username+participantid@domain.com
 EMAIL_USERNAME="${PLAYER_EMAIL_BASE%@*}"
 EMAIL_DOMAIN="${PLAYER_EMAIL_BASE#*@}"
 export TF_VAR_readonly_user_email="${EMAIL_USERNAME}+${INSTRUQT_PARTICIPANT_ID}@${EMAIL_DOMAIN}"
 
+echo "✅ Host and env are ready!"
+
+# --- INSTALL DEPENDENCIES (Terraform, jq, curl, go) ---
+echo "Installing dependencies..."
+
+# Add official HashiCorp's repo
+sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+gpg --no-default-keyring --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg --fingerprint
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+# Update apt and install dependencies
+sudo apt-get update
+sudo apt-get install -y terraform curl jq
+echo "✅ Dependencies installed!"
+
+# --- CLONE REPO AND SETUP CONFIG ---
+echo "Cloning New Relic's OpenTelemetry Demo..."
+git clone https://github.com/newrelic/opentelemetry-demo
+echo "✅ OpenTelemetry Demo cloned!"
+
 # --- CREATE NR SUBACCOUNT ---
+echo "Creating New Relic sub-account"
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
 ./install-nr-account.sh
 
 export TF_VAR_newrelic_account_id=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_account" && terraform output -raw account_id)
 export NEW_RELIC_LICENSE_KEY=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_account" && terraform output -raw license_key)
 
+echo "✅ Subaccount created!"
+
 # --- CREATE BROWSER APP --
+echo "Creating New Relic Browser app..."
+echo "Waiting 60 seconds to avoid account inconsistency..." # (TODO: investigate potential check to avoid "Error: Validation failed: Name should be unique" if app is created too early)
+sleep 60
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_browser"
 terraform init
 terraform apply -auto-approve
@@ -84,14 +67,12 @@ BROWSER_JS_CONFIG=$(terraform output -raw browser_js_config)
 APP_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.applicationID')
 TRUST_KEY=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.trustKey')
 AGENT_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.agentID')
+echo "✅ Browser app created!"
 
-# --- PATCH TEMPLATE --
-# Path to the template file and output file  (TODO: this would be easier with Demo CLI)
+# --- PATCH TEMPLATE --- (TODO: when we move to Go CLI this won't be needed)
+echo "Patching nr-browser.yaml template..."
 TEMPLATE_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/nr-browser.yaml.tmpl"
 OUTPUT_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/nr-browser.yaml"
-
-# Replace placeholders in the template and write to output file
-echo "Replacing placeholders in browser template..."
 sed \
   -e "s|{{ .LicenseKey }}|${BROWSER_LICENSE_KEY}|g" \
   -e "s|{{ .AppID }}|${APP_ID}|g" \
@@ -99,16 +80,12 @@ sed \
   -e "s|{{ .TrustKey }}|${TRUST_KEY}|g" \
   -e "s|{{ .AgentID }}|${AGENT_ID}|g" \
   "${TEMPLATE_FILE}" > "${OUTPUT_FILE}"
+echo "✅ nr-browser.yaml template patched!"
 
-# --- PATCH INSTALL-K8S.SH TO SUPPORT BROWSER OVERRIDE (TODO: this would be easier with Demo CLI)  ---
+# --- PATCH INSTALL-K8S.SH TO SUPPORT BROWSER OVERRIDE --- (TODO: when we move to Go CLI this won't be needed)
 echo "Patching install-k8s.sh to support browser configuration override..."
-
 INSTALL_SCRIPT="${WORK_DIR}/opentelemetry-demo/newrelic/scripts/install-k8s.sh"
-
-# Create a patched version of the script
 cp "${INSTALL_SCRIPT}" "${INSTALL_SCRIPT}.bak"
-
-# Use awk to patch the script more reliably
 awk '
 # Add additional_values_file parameter after is_openshift line
 /local is_openshift=\$\{6:-\}/ {
@@ -117,8 +94,24 @@ awk '
     next
 }
 
+/# Shift away the first 5 required arguments, then check if 6th exists before shifting it/ {
+    print $0
+    getline  # Read next line: shift 5
+    print $0
+    getline  # Read next line: if [ $# -gt 0 ]; then
+    print $0
+    getline  # Read next line: shift  # Shift away the 6th argument...
+    print $0
+    getline  # Read next line: fi
+    print $0
+    print "  if [ $" "# -gt 0 ]; then"
+    print "    shift  # Shift away the 7th argument (additional_values_file) if it exists"
+    print "  fi"
+    next
+}
+
 # Add logic to include additional values file after the main values file
-/helm_args\+=\(-f "\$values_file"\)/ {
+/local helm_args=\(.*-f "\$values_file"\)/ {
     print $0
     print ""
     print "  # Add additional values file if provided"
@@ -135,7 +128,8 @@ awk '
 
 # Add the browser yaml as 7th parameter after IS_OPENSHIFT_CLUSTER line in the OTEL call
 in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
-    print $0
+    # Add backslash to continue the line, then add the browser yaml parameter
+    print $0 " \\"
     print "  \"../k8s/helm/nr-browser.yaml\""
     in_otel_call = 0
     next
@@ -146,130 +140,94 @@ in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
 ' "${INSTALL_SCRIPT}.bak" > "${INSTALL_SCRIPT}"
 
 chmod +x "${INSTALL_SCRIPT}"
-echo "✅ install-k8s.sh patched successfully"
+echo "✅ install-k8s.sh patched!"
 
 # --- DEPLOY DEMO TO KUBERNETES ---
+echo "Deploying OpenTelemetry Demo..."
+echo "Waiting for Kubernetes API..."
+# Loop until the 'default' service account exists (sign that the API is up)
+until kubectl get serviceaccount default &> /dev/null; do
+  sleep 2
+done
+echo "✅ Cluster is ready!"
+
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
 ./install-k8s.sh
 
-echo ""
 echo "Waiting for all pods to be ready..."
 sleep 60 # Wait for pod creation to start
 kubectl wait --for=condition=ready pod --all -n opentelemetry-demo --timeout=600s || true
-sleep 120 # Wait for entities to be created in New Relic (TODO: make this an actual GraphQL check)
-
-echo ""
 echo "✅ OpenTelemetry Demo is fully deployed and ready!"
-echo ""
 
-# --- INSTALL NR RESOURCES (e.g. alerts, SLOs)
+echo "Waiting 5 minutes for data to show up in New Relic..."
+sleep 300 # Wait for entities to be created in New Relic (TODO: make this an actual GraphQL check)
+
+echo "✅ Entities should be created in New Relic now!"
+
+# --- INSTALL NR RESOURCES (e.g. alerts, SLOs) ---
+echo "Installing New Relic demo resources..."
 cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
 ./install-nr-resources.sh
+echo "✅ Demo resources installed!"
 
-# --- PROMPT SCRIPT SETUP ---
-# Create the prompt script in /tmp
-echo "Setting up prompt script..."
-cat > /tmp/prompt_incident1 <<'EOF'
-#!/bin/bash
-
-# Continuous answer submission script for Instruqt track
-# This script allows users to submit and re-edit their answers
-
-ANSWER_FILE="/tmp/incident1_answers.json"
-
-# Display the intro message
-show_intro() {
-    clear
-    echo "╔══════════════════════════════════════════════════════════════════╗"
-    echo "║  🚨 Incident Investigation Answer Submission                     ║"
-    echo "╚══════════════════════════════════════════════════════════════════╝"
-    echo ""
-}
-
-# Collect answers from the user
-collect_answers() {
-    echo "Answer the following questions based on your investigation:"
-    echo ""
-
-    read -p "1. Which service is the root cause? " SERVICE
-    echo ""
-    read -p "2. What type of issue is affecting the service? " ISSUE_TYPE
-    echo ""
-    read -p "3. What is the specific root cause? " ROOT_CAUSE
-    echo ""
-
-    # Save answers to JSON file
-    cat > "$ANSWER_FILE" <<INNER_EOF
-{
-  "service": "$SERVICE",
-  "issue_type": "$ISSUE_TYPE",
-  "root_cause": "$ROOT_CAUSE"
-}
-INNER_EOF
-
-    echo "✅ Answers saved!"
-    echo ""
-}
-
-# Display saved answers
-show_saved_answers() {
-    if [[ -f "$ANSWER_FILE" ]]; then
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📝 Your Current Answers:"
-        echo ""
-
-        # Parse JSON without jq using grep and sed
-        SERVICE=$(grep -o '"service"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
-        ISSUE_TYPE=$(grep -o '"issue_type"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
-        ROOT_CAUSE=$(grep -o '"root_cause"[[:space:]]*:[[:space:]]*"[^"]*"' "$ANSWER_FILE" | sed 's/.*"\([^"]*\)".*/\1/' || echo "Not answered")
-
-        echo "  1. Service: $SERVICE"
-        echo "  2. Issue Type: $ISSUE_TYPE"
-        echo "  3. Root Cause: $ROOT_CAUSE"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-    fi
-}
-
-# Main loop
-main() {
-    while true; do
-        show_intro
-
-        # Show existing answers if they exist
-        if [[ -f "$ANSWER_FILE" ]]; then
-            show_saved_answers
-            echo "💡 To edit your answers, simply re-enter them below."
-            echo ""
-        fi
-
-        # Collect answers
-        collect_answers
-
-        # Show instructions
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📌 Next Steps:"
-        echo ""
-        echo "   1️⃣  Click the 'Check' button in Instruqt to validate your answers"
-        echo "   2️⃣  Want to edit your answers? Press Enter to continue..."
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo ""
-
-        # Wait for user to press Enter to continue editing
-        read -p "Press Enter to edit answers again" CONTINUE
-    done
-}
-
-# Run the main loop
-main
-EOF
-
-chmod +x /tmp/prompt_incident1
-echo "✅ Prompt script ready at /tmp/prompt_incident1"
-
-# Expose the frontend service on port 30080 using NodePort
-echo ""
+# --- EXPOSE FRONTEND SERVICE ---
 echo "Exposing frontend service on port 30080..."
 kubectl patch svc frontend-proxy -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30080,"protocol":"TCP"}]}}'
 echo "✅ Frontend is now accessible on port 30080"
+
+# --- PROMPT SCRIPT SETUP (TODO: bake this script into a custom image) ---
+# Create ONE generic prompt script that works for ALL challenges
+echo "Setting up generic prompt script to accept answers..."
+cat > /tmp/generic_prompt <<'EOF'
+#!/bin/bash
+# Generic answer submission script for M.A.R.S. Program challenges
+# Uses /tmp/answers.json for all challenges (cleaned up between challenges)
+
+ANSWER_FILE="/tmp/answers.json"
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  M.A.R.S. Program - Answer Submission                            ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "📝 Read the assignment instructions to understand what to submit."
+echo ""
+
+# Show current answer if exists
+if [[ -f "$ANSWER_FILE" ]]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Your Current Answer:"
+    echo ""
+    CURRENT=$(jq -r '.answer // "Not entered"' "$ANSWER_FILE" 2>/dev/null || echo "Not entered")
+    echo "  $CURRENT"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+fi
+
+# Continuous submission loop
+while true; do
+    echo "Enter your answer (or press Ctrl+C to exit):"
+    read -p "> " ANSWER
+
+    if [[ -n "$ANSWER" ]]; then
+        echo "{\"answer\": \"$ANSWER\"}" > "$ANSWER_FILE"
+        echo ""
+        echo "✅ Answer saved!"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📌 Next Steps:"
+        echo "   1️⃣  Click the 'Check' button in Instruqt to validate"
+        echo "   2️⃣  To update your answer, just type a new one above"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Current answer: $ANSWER"
+        echo ""
+    else
+        echo "❌ Answer cannot be empty. Please try again."
+        echo ""
+    fi
+done
+EOF
+
+chmod +x /tmp/generic_prompt
+echo "✅ Generic prompt ready at /tmp/generic_prompt"
+

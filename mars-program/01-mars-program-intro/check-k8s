@@ -73,12 +73,71 @@ fi
 WORKLOAD_GUID=$(echo "$RESPONSE" | jq -r '.data.actor.entitySearch.results.entities[0].guid')
 
 echo "✅ Found workload: $WORKLOAD_NAME"
-echo "🔍 Checking workload entities..."
-echo "⏳ Waiting for entities to be indexed (this may take a moment)..."
-sleep 5
+echo "🔍 Validating workload configuration..."
 
-# Get entities in the account (which should match the workload's entities)
-# Workload was created with query: tags.accountId = 'ACCOUNT_ID'
+# Validate that the workload is configured with the correct query
+WORKLOAD_CONFIG_QUERY=$(cat <<'GQL'
+{
+  actor {
+    account(id: %ACCOUNT_ID%) {
+      workload {
+        collection(guid: "%WORKLOAD_GUID%") {
+          guid
+          name
+          entitySearchQueries {
+            query
+          }
+          scopeAccounts {
+            accountIds
+          }
+        }
+      }
+    }
+  }
+}
+GQL
+)
+
+WORKLOAD_CONFIG_QUERY="${WORKLOAD_CONFIG_QUERY//%ACCOUNT_ID%/$NR_ACCOUNT_ID}"
+WORKLOAD_CONFIG_QUERY="${WORKLOAD_CONFIG_QUERY//%WORKLOAD_GUID%/$WORKLOAD_GUID}"
+
+CONFIG_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$WORKLOAD_CONFIG_QUERY" | jq -Rs .)}")
+
+# Check for errors
+if echo "$CONFIG_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$CONFIG_RESPONSE" | jq -r '.errors[0].message // "Unknown error"')
+    fail-message "❌ Error fetching workload configuration: $ERROR_MSG"
+    exit 1
+fi
+
+# Check if workload has a query configured
+SEARCH_QUERIES=$(echo "$CONFIG_RESPONSE" | jq -r '.data.actor.account.workload.collection.entitySearchQueries // []')
+QUERY_COUNT=$(echo "$SEARCH_QUERIES" | jq 'length')
+
+if [[ "$QUERY_COUNT" == "0" ]]; then
+    fail-message "❌ Workload '$WORKLOAD_NAME' has no query configured. Please add entities using a query like: \`tags.account\` = '$ACCOUNT_NAME' or tags.accountId = '$NR_ACCOUNT_ID'"
+    exit 1
+fi
+
+# Check if workload query includes the account tag (either account name or account ID)
+ACCOUNT_NAME="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
+HAS_ACCOUNT_NAME=$(echo "$SEARCH_QUERIES" | jq --arg accountName "$ACCOUNT_NAME" '[.[] | select(.query | contains($accountName))] | length > 0')
+HAS_ACCOUNT_ID=$(echo "$SEARCH_QUERIES" | jq --arg accountId "$NR_ACCOUNT_ID" '[.[] | select(.query | contains($accountId))] | length > 0')
+
+if [[ "$HAS_ACCOUNT_NAME" != "true" ]] && [[ "$HAS_ACCOUNT_ID" != "true" ]]; then
+    ACTUAL_QUERY=$(echo "$SEARCH_QUERIES" | jq -r '.[0].query')
+    fail-message "❌ Workload query doesn't filter by account. Expected: \`tags.account\` = '$ACCOUNT_NAME' OR tags.accountId = '$NR_ACCOUNT_ID', but found: $ACTUAL_QUERY"
+    exit 1
+fi
+
+echo "✅ Workload configuration validated successfully"
+
+# Get entities for team ownership (using account ID for consistency)
+echo "🔍 Fetching entities to add to team..."
+
 ENTITIES_QUERY=$(cat <<'GQL'
 {
   actor {
@@ -104,7 +163,7 @@ ENTITIES_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
   -H "API-Key: ${NR_API_KEY}" \
   -d "{\"query\": $(echo "$ENTITIES_QUERY" | jq -Rs .)}")
 
-# Check for errors in entities query
+# Check for errors
 if echo "$ENTITIES_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
     ERROR_MSG=$(echo "$ENTITIES_RESPONSE" | jq -r '.errors[0].message // "Unknown error"')
     fail-message "❌ Error fetching entities: $ERROR_MSG"
@@ -115,58 +174,10 @@ fi
 ENTITIES=$(echo "$ENTITIES_RESPONSE" | jq -r '.data.actor.entitySearch.results.entities // []')
 ENTITY_COUNT=$(echo "$ENTITIES" | jq 'length')
 
-if [[ "$ENTITY_COUNT" == "0" ]] || [[ "$ENTITY_COUNT" == "null" ]]; then
-    fail-message "❌ No entities found in account $NR_ACCOUNT_ID. The workload should contain entities matching: tags.accountId = '$NR_ACCOUNT_ID'"
-    exit 1
-fi
-
-# Check if Checkout Service Availability SLO exists in workload
-CHECKOUT_FOUND=$(echo "$ENTITIES" | jq -r '.[] | select(.name == "Checkout Service Availability") | .name' || echo "")
-
-if [[ -z "$CHECKOUT_FOUND" ]]; then
-    fail-message "❌ Workload '$WORKLOAD_NAME' does not contain the 'Checkout Service Availability' entity. Make sure you added all entities using: tags.accountId = '$NR_ACCOUNT_ID'"
-    exit 1
-fi
-
-echo "✅ Workload has $ENTITY_COUNT entities including Checkout Service Availability"
+echo "  Found $ENTITY_COUNT entities in account"
 
 # Auto-create team with the same name
-echo "🎯 Checking for existing New Relic Team '$WORKLOAD_NAME'..."
-
-# First, check if a team with this name already exists
-CHECK_TEAM_QUERY="{
-  actor {
-    entityManagement {
-      entitySearch(query: \"type = 'TEAM' AND name = '$WORKLOAD_NAME'\") {
-        entities {
-          ... on EntityManagementTeamEntity {
-            id
-            name
-            ownership {
-              id
-            }
-          }
-        }
-      }
-    }
-  }
-}"
-
-CHECK_TEAM_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
-  -H "Content-Type: application/json" \
-  -H "API-Key: ${NR_API_KEY}" \
-  -d "{\"query\": $(echo "$CHECK_TEAM_QUERY" | jq -Rs .)}")
-
-EXISTING_TEAM_ID=$(echo "$CHECK_TEAM_RESPONSE" | jq -r '.data.actor.entityManagement.entitySearch.entities[0].id // empty')
-EXISTING_OWNERSHIP_ID=$(echo "$CHECK_TEAM_RESPONSE" | jq -r '.data.actor.entityManagement.entitySearch.entities[0].ownership.id // empty')
-
-if [[ -n "$EXISTING_TEAM_ID" ]] && [[ "$EXISTING_TEAM_ID" != "null" ]]; then
-    # Team already exists
-    fail-message "❌ Team with name $WORKLOAD_NAME already exists, choose another one!"
-    exit 1
-fi
-
-# Team doesn't exist, create it
+# Note: API will atomically reject if team already exists
 echo "🎯 Creating New Relic Team '$WORKLOAD_NAME'..."
 
 # Get organization ID for team scope
@@ -219,7 +230,11 @@ TEAM_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
 # Check if team was created successfully
 if echo "$TEAM_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
     ERROR_MSG=$(echo "$TEAM_RESPONSE" | jq -r '.errors[0].message')
-    fail-message "❌ Failed to create team '$WORKLOAD_NAME': $ERROR_MSG"
+    if echo "$ERROR_MSG" | grep -q "already exists"; then
+        fail-message "❌ Team '$WORKLOAD_NAME' already exists! Please choose a different workload name or delete the existing team first."
+    else
+        fail-message "❌ Failed to create team '$WORKLOAD_NAME': $ERROR_MSG"
+    fi
     exit 1
 else
     TEAM_ID=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.id // empty')
@@ -240,53 +255,73 @@ else
     echo "✅ Ownership collection ID: $OWNERSHIP_COLLECTION_ID"
 fi
 
-# Now add the workload and all non-infrastructure entities to the team's ownership collection
+# Now add the workload and ALL entities to the team's ownership collection
 echo "🔗 Adding workload and entities to team..."
 
-# Filter out infrastructure entities (domain = "INFRA") and get all non-infrastructure GUIDs
-NON_INFRA_GUIDS=$(echo "$ENTITIES" | jq -r '[.[] | select(.domain != "INFRA") | .guid]')
-NON_INFRA_COUNT=$(echo "$NON_INFRA_GUIDS" | jq 'length')
+# Get all entity GUIDs (including infrastructure)
+ALL_GUIDS=$(echo "$ENTITIES" | jq -r '[.[].guid]')
+ALL_COUNT=$(echo "$ALL_GUIDS" | jq 'length')
 
-echo "  Found $NON_INFRA_COUNT non-infrastructure entities to add"
+echo "  Found $ALL_COUNT entities to add (including infrastructure)"
 
-# Create array of GUIDs to add (workload + all non-infrastructure entities)
+# Create array of GUIDs to add (workload + all entities)
 # The workload GUID might already be in the list, but that's okay - New Relic will handle duplicates
-ENTITIES_TO_ADD=$(echo "$NON_INFRA_GUIDS" | jq --arg wguid "$WORKLOAD_GUID" '. + [$wguid] | unique')
+ENTITIES_TO_ADD=$(echo "$ALL_GUIDS" | jq --arg wguid "$WORKLOAD_GUID" '. + [$wguid] | unique')
+TOTAL_TO_ADD=$(echo "$ENTITIES_TO_ADD" | jq 'length')
 
-echo "  Total entities to add (including workload): $(echo "$ENTITIES_TO_ADD" | jq 'length')"
+echo "  Total entities to add (including workload): $TOTAL_TO_ADD"
+
+# New Relic has a limit of 100 entities per request, so batch if needed
+BATCH_SIZE=100
+TOTAL_ADDED=0
 
 # Use entityManagementAddCollectionMembers to add entities to the ownership collection
 ADD_ENTITIES_MUTATION='mutation($collectionId: ID!, $ids: [ID!]!) {
   entityManagementAddCollectionMembers(collectionId: $collectionId, ids: $ids)
 }'
 
-ADD_REQUEST=$(jq -n \
-  --arg query "$ADD_ENTITIES_MUTATION" \
-  --arg collectionId "$OWNERSHIP_COLLECTION_ID" \
-  --argjson ids "$ENTITIES_TO_ADD" \
-  '{query: $query, variables: {collectionId: $collectionId, ids: $ids}}')
+# Calculate number of batches needed
+NUM_BATCHES=$(echo "$ENTITIES_TO_ADD" | jq --arg size "$BATCH_SIZE" 'length / ($size | tonumber) | ceil')
 
-ADD_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
-  -H "Content-Type: application/json" \
-  -H "API-Key: ${NR_API_KEY}" \
-  -d "$ADD_REQUEST")
+echo "  Adding entities in $NUM_BATCHES batch(es)..."
 
-echo "  Add entities response: $(echo "$ADD_RESPONSE" | jq -c '.')"
+for ((batch=0; batch<NUM_BATCHES; batch++)); do
+    # Get batch of entities (max 100)
+    OFFSET=$((batch * BATCH_SIZE))
+    BATCH_ENTITIES=$(echo "$ENTITIES_TO_ADD" | jq --arg offset "$OFFSET" --arg size "$BATCH_SIZE" '.[$offset | tonumber : ($offset | tonumber) + ($size | tonumber)]')
+    BATCH_COUNT=$(echo "$BATCH_ENTITIES" | jq 'length')
 
-if echo "$ADD_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
-    ERROR_MSG=$(echo "$ADD_RESPONSE" | jq -r '.errors[0].message')
-    fail-message "❌ Failed to add entities to team: $ERROR_MSG"
-    exit 1
-else
-    ADDED_COUNT=$(echo "$ENTITIES_TO_ADD" | jq 'length')
-    echo "✅ Added $ADDED_COUNT entities to team (workload + all non-infrastructure entities)"
-fi
+    echo "  Batch $((batch + 1))/$NUM_BATCHES: Adding $BATCH_COUNT entities..."
+
+    ADD_REQUEST=$(jq -n \
+      --arg query "$ADD_ENTITIES_MUTATION" \
+      --arg collectionId "$OWNERSHIP_COLLECTION_ID" \
+      --argjson ids "$BATCH_ENTITIES" \
+      '{query: $query, variables: {collectionId: $collectionId, ids: $ids}}')
+
+    ADD_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+      -H "Content-Type: application/json" \
+      -H "API-Key: ${NR_API_KEY}" \
+      -d "$ADD_REQUEST")
+
+    if echo "$ADD_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+        ERROR_MSG=$(echo "$ADD_RESPONSE" | jq -r '.errors[0].message')
+        fail-message "❌ Failed to add entities (batch $((batch + 1))): $ERROR_MSG"
+        exit 1
+    fi
+
+    TOTAL_ADDED=$((TOTAL_ADDED + BATCH_COUNT))
+    echo "  ✅ Batch $((batch + 1)) complete"
+done
+
+echo "✅ Successfully added $TOTAL_ADDED entities to team"
 
 # Success!
 echo ""
 echo "═══════════════════════════════════════════════════════════════════"
 echo "✅ Perfect! Workload '$WORKLOAD_NAME' is properly configured!"
-echo "🎯 Contains $ENTITY_COUNT entities including checkoutservice"
-echo "🏆 Your team is ready to respond to incidents!"
+echo "🎯 Workload query validated successfully"
+echo "📊 Found $ENTITY_COUNT entities in account"
+echo "🏆 Team created with all $TOTAL_ADDED entities (including infrastructure)!"
 echo "═══════════════════════════════════════════════════════════════════"
 exit 0

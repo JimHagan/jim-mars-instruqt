@@ -71,8 +71,10 @@ The most important thing is that you come up with a cool team name!
 Now add ALL entities from your account using a dynamic query:
 
 1. In the **Select entities** section, click the `+` button
-2. Add a filter choosing the account name
-3. Select your account name
+2. Add a filter by choosing either:
+   - **Option A:** `tags.account` = your account name (e.g., "MARS - zkgwonyc8tnb")
+   - **Option B:** `tags.accountId` = your account ID
+3. Select your account name or enter your account ID
 4. Click **Add** to include all entities
 5. Click **Create workload** at the bottom
 
@@ -82,19 +84,16 @@ Now add ALL entities from your account using a dynamic query:
 3. Click the **Check** button in Instruqt
 4. If validation fails, you can re-enter your workload name
 
-**✨ Bonus:** The system will automatically create a New Relic Team with your workload name and add all your entities to it!
+**✨ Bonus:** The system will automatically create a New Relic Team with your workload name and add ALL entities from your account to it (including infrastructure, services, and more)!
 
 ## ✅ Success Criteria
 
-Your workload must include the **Checkout Service Availability** SLO entity to pass this challenge.
+Your workload must be configured with a query that filters by your account (using either `tags.account` or `tags.accountId`) to pass this challenge.
 
 ## 💡 Tips
 
 - **Workload names are case-sensitive** - remember exactly what you typed
-- The query `tags.accountId = 'YOUR_ACCOUNT_ID'` will show ALL entities in that account
+- Use either `tags.account = 'YOUR_ACCOUNT_NAME'` or `tags.accountId = 'YOUR_ACCOUNT_ID'` to show ALL entities in your account
 - Workloads provide a single pane of glass for your entire application during incidents
 - You can view your workload at any time to see overall system health
-
-## 🚀 What's Next?
-
-Once your workload is set up, you'll receive your first incident alert and begin your shift as the on-call SRE. Wait for your Game Manager's instructions, and good luck! 🎯
+- The automatic team creation will include ALL entities from your account (services, infrastructure, etc.) and uses batching for large entity counts

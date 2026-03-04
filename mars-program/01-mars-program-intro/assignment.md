@@ -53,7 +53,9 @@ The most important thing is that you come up with a cool team name!
 
 ### Step 1: Log in to New Relic
 1. Your Game Manager has already given you credentials to access New Relic. You can share those with your teammates.
-2. Log in to [New Relic](https://one.newrelic.com) using the credentials provided.
+2. Log in to [New Relic](https://one.newrelic.com) using the credentials provided:
+    - Email: ${INSTRUCTOR_EMAIL_HANDLE}+${INSTRUQT_PARTICIPANT_ID}@${INSTRUCTOR_EMAIL_DOMAIN}
+    - Password: The Game Manager will provide this.
 
 ### Step 2: Create Your Workload
 Have on person in your team do the following:

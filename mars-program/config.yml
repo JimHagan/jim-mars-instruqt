@@ -5,7 +5,8 @@ virtualmachines:
   environment:
     IS_OPENSHIFT_CLUSTER: "n"
     NR_SUBACCOUNT_NAME_PREFIX: 'MARS - '
-    PLAYER_EMAIL_BASE: dgomezblanco@newrelic.com
+    INSTRUCTOR_EMAIL_HANDLE: dgomezblanco
+    INSTRUCTOR_EMAIL_DOMAIN: newrelic.com
     TF_AUTO_APPROVE: "true"
     TF_VAR_admin_group_name: Admin
     TF_VAR_app_name: frontend

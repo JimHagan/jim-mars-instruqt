@@ -15,10 +15,7 @@ WORK_DIR="$(pwd)"
 export TF_VAR_newrelic_api_key="${MARS_PARENT_API_KEY}"
 export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
 export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
-# Construct email as username+participantid@domain.com
-EMAIL_USERNAME="${PLAYER_EMAIL_BASE%@*}"
-EMAIL_DOMAIN="${PLAYER_EMAIL_BASE#*@}"
-export TF_VAR_readonly_user_email="${EMAIL_USERNAME}+${INSTRUQT_PARTICIPANT_ID}@${EMAIL_DOMAIN}"
+export TF_VAR_readonly_user_email="${INSTRUCTOR_EMAIL_HANDLE}+${INSTRUQT_PARTICIPANT_ID}@${INSTRUCTOR_EMAIL_DOMAIN}"
 
 echo "✅ Host and env are ready!"
 

@@ -3,7 +3,7 @@ slug: mars-program-intro
 id: 8onxikf0rfac
 type: challenge
 title: Intro
-teaser: Create your team workload and get ready for incident response
+teaser: Create your workload and get ready for incident response
 tabs:
 - id: 4wssaltsxrid
   title: Check
@@ -46,10 +46,11 @@ The Astronomy Shop is a microservices application:
 - **Load Generator:** Simulates real customer traffic
 - **Full Stack Observability:** All services instrumented with OpenTelemetry
 
-## 📋 Mission 1: Create Your Team Workload
+## 📋 Mission 1: Create A Workload As Your Team Name
 
 Before responding to incidents, you need to create a **Workload** in New Relic.
-This groups all your application entities together, making it easy to see the health of your entire system at a glance during incident response.
+This groups all your entities together, making it easy to see the health of your entire system at a glance during incident response.
+We'll use the name of the workload to refer to your team name in later stages.
 
 Don't worry about time in this first mission, it won't count against your SLOs.
 The most important thing is that you come up with a cool team name!
@@ -57,9 +58,10 @@ The most important thing is that you come up with a cool team name!
 ### Step 1: Log in to New Relic
 1. Your Game Manager has already given you credentials to access New Relic. You can share those with your teammates.
 2. Log in to [New Relic](https://one.newrelic.com) using the credentials provided.
-3. Navigate to your assigned account (look for "MARS - " in the account name)
 
-### Step 2: Create Your Team Workload
+### Step 2: Create Your Workload
+Have on person in your team do the following:
+
 1. Go to **Workloads** (use Quick Find or press Ctrl/Cmd + K and search for "Workloads")
 2. Click **Create a workload**
 3. **Name:** Enter your team name (e.g., "Alpha Team", "Incident Command & Conquer", "Systems Are All Down")
@@ -84,8 +86,6 @@ Now add ALL entities from your account using a dynamic query:
 3. Click the **Check** button in Instruqt
 4. If validation fails, you can re-enter your workload name
 
-**✨ Bonus:** The system will automatically create a New Relic Team with your workload name and add ALL entities from your account to it (including infrastructure, services, and more)!
-
 ## ✅ Success Criteria
 
 Your workload must be configured with a query that filters by your account (using either `tags.account` or `tags.accountId`) to pass this challenge.
@@ -96,4 +96,3 @@ Your workload must be configured with a query that filters by your account (usin
 - Use either `tags.account = 'YOUR_ACCOUNT_NAME'` or `tags.accountId = 'YOUR_ACCOUNT_ID'` to show ALL entities in your account
 - Workloads provide a single pane of glass for your entire application during incidents
 - You can view your workload at any time to see overall system health
-- The automatic team creation will include ALL entities from your account (services, infrastructure, etc.) and uses batching for large entity counts

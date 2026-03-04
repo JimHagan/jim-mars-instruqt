@@ -66,9 +66,26 @@ https://api.newrelic.com/graphql
 
 # Authentication
 API-Key: ${NEW_RELIC_API_KEY}
-
-# Common queries use entitySearch for workloads, entities, teams
 ```
+
+#### Example: Finding a workload by name
+
+```graphql
+{
+  actor {
+    entitySearch(query: "accountId = 7783563 AND type = 'WORKLOAD' AND name = 'My Awesome Team'") {
+      results {
+        entities {
+          guid
+          name
+        }
+      }
+    }
+  }
+}
+```
+
+**Important**: Use `accountId = X` (not `tags.accountId`) in the entitySearch query filter to scope searches to specific accounts.
 
 ### Track Configuration
 

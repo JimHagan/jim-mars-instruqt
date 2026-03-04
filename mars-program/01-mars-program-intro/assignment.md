@@ -10,10 +10,6 @@ tabs:
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: guoqg1hcggid
-  title: Shell
-  type: terminal
-  hostname: k8s
 - id: jyedweaymtba
   title: Astronomy Shop
   type: service
@@ -89,6 +85,10 @@ Now add ALL entities from your account using a dynamic query:
 ## ✅ Success Criteria
 
 Your workload must be configured with a query that filters by your account (using either `tags.account` or `tags.accountId`) to pass this challenge.
+
+**✨ What happens after success:**
+Once your workload is validated, we'll automatically tag all entities in your account with `team: {your_team_name}` using New Relic's powerful NerdGraph GraphQL API.
+This makes it easy to filter and find your team's resources throughout the rest of the challenges!
 
 ## 💡 Tips
 

@@ -54,8 +54,8 @@ The most important thing is that you come up with a cool team name!
 ### Step 1: Log in to New Relic
 1. Your Game Manager has already given you credentials to access New Relic. You can share those with your teammates.
 2. Log in to [New Relic](https://one.newrelic.com) using the credentials provided:
-    - Email: ${INSTRUCTOR_EMAIL_HANDLE}+${INSTRUQT_PARTICIPANT_ID}@${INSTRUCTOR_EMAIL_DOMAIN}
-    - Password: The Game Manager will provide this.
+    - Email: {{INSTRUCTOR_EMAIL_HANDLE}}+${{INSTRUQT_PARTICIPANT_ID}}@${{INSTRUCTOR_EMAIL_DOMAIN}}
+    - Password: Your Game Manager will provide this.
 
 ### Step 2: Create Your Workload
 Have on person in your team do the following:
@@ -72,7 +72,7 @@ Now add ALL entities from your account using a dynamic query:
 
 1. In the **Select entities** section, click the `+` button
 2. Add a filter by choosing either:
-   - **Option A:** `tags.account` = your account name (e.g., "MARS - zkgwonyc8tnb")
+   - **Option A:** `tags.account` = your account name (i.e., "{{NR_SUBACCOUNT_NAME_PREFIX}}{{INSTRUQT_PARTICIPANT_ID}}")
    - **Option B:** `tags.accountId` = your account ID
 3. Select your account name or enter your account ID
 4. Click **Add** to include all entities

@@ -3,7 +3,7 @@ slug: mars-incident-3-failure
 id: y6xxocxsyopf
 type: challenge
 title: 'Incident 3: Failure'
-teaser: A critical service is experiencing performance issues
+teaser: The shop feels sluggish — customers are bouncing before pages load
 tabs:
 - id: etdymdhv15kg
   title: Check
@@ -21,36 +21,74 @@ timelimit: 1800
 enhanced_loading: null
 ---
 
-# 🚨 Incident Alert: Checkout Service Performance Degradation
+# 🚨 Incident Alert: Store Feels Extremely Slow
 
-Your team has received an alert from New Relic indicating that the **Astronomy Shop** checkout service is experiencing degraded performance.
-Customers are reporting slow checkout times, which is impacting revenue during a critical sales period.
+**Severity:** P2 — User Experience Degradation
+**Impact:** Product pages are taking an unusually long time to fully load
 
-## Your Mission
+Your team is paged. Customers are complaining that the **Astronomy Shop** feels "broken" and "unusable."
+Pages are loading but something is visibly wrong — the experience is painfully slow, and bounce rates are spiking.
+No errors are showing up in the obvious places, making this one tricky to pin down.
 
-Use New Relic to investigate this incident and identify:
+## 🎯 Your Mission
 
-1. **Which service** is the root cause of the degradation?
-2. **What type of issue** is affecting the service? (e.g., high latency, high error rate, resource exhaustion)
-3. **What is the specific root cause** of the problem?
+Use New Relic to investigate and identify:
 
-## Getting Started
+1. **Which service** is causing the slowness?
+2. **What type of issue** is affecting it?
+3. **What is the root cause** of the problem?
 
-1. Check the alert you will receive on Slack
-2. Use New Relic APM, distributed tracing, and other observability tools to investigate
-3. Once you've identified the answers, go to the **Check** terminal tab
-4. Enter your answers in the following format (separated by semi-colons):
-   ```
-   service name; issue type; root cause
-   ```
-   **Example:** `productcatalogservice; high latency; database connection timeout`
-5. Click the **Check** button to validate your answers
-6. If incorrect, you can re-enter your answers in the terminal
+## 🔍 Investigation Guide
 
-## Important Notes
+### Step 1: Reproduce the Problem
+Open the **Astronomy Shop** tab and navigate to a product detail page.
+Click on any product. What do you notice?
+- Does the page text load quickly?
+- Do the **product images** load at the same speed?
+- Time how long the page takes to fully load (images included)
 
-- ⏱️ You have **30 minutes** to resolve this incident
-- 💡 If you're stuck after 15 minutes, ask your instructor for hints
-- 🎯 Answer all questions correctly to automatically resolve the incident
+### Step 2: Check Browser Monitoring
+This incident affects the **user-facing experience**, so start with **Browser** monitoring:
+1. In New Relic, go to **Browser** and find the Astronomy Shop browser app
+2. Look at **Core Web Vitals** — is **LCP (Largest Contentful Paint)** elevated?
+3. Check the **AJAX** tab for slow requests — do you see slow calls for image loading?
 
-Good luck! 🚀
+### Step 3: Investigate with APM
+1. Go to **APM & Services** and look for any service with elevated **response time / latency**
+2. Check the service handling image requests — look for a service named `imageprovider` or similar
+3. In its APM summary, check if the **average response time** is much higher than normal
+
+### Step 4: Dig into Traces
+In APM, go to **Distributed Tracing** for the slow service:
+1. Open a slow trace for an image-loading request
+2. Look at the span duration — how long does a single image request take?
+3. Check the span **attributes** — is there anything that suggests artificial delay?
+
+### Step 5: Identify the Root Cause
+Based on your investigation:
+- Which service is consistently slow?
+- Is there a pattern? (All requests? Only for images? Only for certain paths?)
+- What could cause a service to be artificially slow on every request?
+
+## 📝 Submit Your Answers
+
+Once you've identified the root cause, go to the **Check** terminal and enter:
+
+```
+service name; issue type; root cause
+```
+
+**Example:** `imageprovider; high latency; image slow load`
+
+**Format hints:**
+- Service name: which service is responsible? (e.g., `imageprovider`)
+- Issue type: what kind of problem is this? (e.g., `high latency`)
+- Root cause: what is causing the slowness? (e.g., `image slow load`)
+
+Click **Check** to validate. You can re-enter if incorrect.
+
+## ⏱️ Notes
+
+- You have **30 minutes** for this incident
+- If stuck after 15 minutes, ask your Game Manager for a hint
+- Hint: this is a latency issue, not an error — check response time metrics, not error rates 🚀

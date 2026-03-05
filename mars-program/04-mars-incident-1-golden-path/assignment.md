@@ -16,6 +16,10 @@ enhanced_loading: null
 
 The `productCatalogFailure` feature flag was enabled, causing the **Product Catalog service** to return errors for a specific product ID (`OLJCESPC7Z` — "Roof Binoculars"). Any customer who tried to view or purchase that product received a 500 error from the product catalog service.
 
+## Alerts For This Incident
+
+![Product Catalog Failure Alerts](product-catalog-failure-alerts.png)
+
 ---
 
 ## The Ideal Debugging Path

@@ -23,7 +23,7 @@ enhanced_loading: null
 
 # 🪐 Welcome to the M.A.R.S. Program
 
-Welcome to the **Mission-ready Automated Response System (M.A.R.S.) Program** - your Game Day training for incident response using New Relic observability.
+Welcome to the **Maturity Architecture & Reliability Simulation (M.A.R.S.) Program** - your Game Day training for incident response using New Relic observability.
 
 ## 🎯 What is M.A.R.S.?
 

@@ -1,0 +1,27 @@
+#!/bin/bash
+set -uo pipefail
+
+echo "=== Cleaning up Incident 7: Ad Service High CPU ==="
+
+rm -f /tmp/answers.json
+
+echo "Disabling adHighCpu feature flag..."
+
+CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -n "$CONFIGMAP_NAME" ]; then
+  echo "Found ConfigMap: $CONFIGMAP_NAME"
+
+  kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
+    jq '.data["demo.flagd.json"] | fromjson | .flags.adHighCpu.defaultVariant = "off" | .flags.adHighCpu.state = "DISABLED" | tojson' | \
+    kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+
+  echo "Restarting flagd pod to apply changes..."
+  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+
+  echo "✅ Feature flag disabled"
+else
+  echo "Warning: Could not find flagd ConfigMap, skipping flag cleanup"
+fi
+
+echo "✅ Cleanup complete"

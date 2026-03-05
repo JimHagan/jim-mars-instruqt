@@ -1,30 +1,32 @@
 #!/bin/bash
-set -uo pipefail  # No -e flag, script continues on errors
+set -uo pipefail
 
-echo "=== Cleaning up Incident 2: Payment Service Unreachable ==="
+echo "=== Cleaning up Incident 9: Failed Readiness Probe ==="
 
-# Clean up answer file
 rm -f /tmp/answers.json
 
-# Disable the paymentUnreachable feature flag by updating the ConfigMap
-echo "Disabling paymentUnreachable feature flag..."
+echo "Disabling failedReadinessProbe feature flag..."
 
-# Get the flagd ConfigMap
 CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 
 if [ -n "$CONFIGMAP_NAME" ]; then
   echo "Found ConfigMap: $CONFIGMAP_NAME"
 
-  # Update the ConfigMap to disable the flag
   kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-    jq '.data["demo.flagd.json"] | fromjson | .flags.paymentUnreachable.defaultVariant = "off" | .flags.paymentUnreachable.state = "DISABLED" | tojson' | \
+    jq '.data["demo.flagd.json"] | fromjson | .flags.failedReadinessProbe.defaultVariant = "off" | .flags.failedReadinessProbe.state = "DISABLED" | tojson' | \
     kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
 
-  # Restart flagd pod to apply changes
   echo "Restarting flagd pod to apply changes..."
   kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
 
-  echo "✅ Feature flag disabled"
+  # Allow time for flagd to restart before the cartservice pod re-evaluates the flag
+  sleep 10
+
+  # Force a restart of the cartservice pod to clear any NotReady state
+  echo "Restarting cartservice pod to restore readiness..."
+  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/name=cartservice 2>/dev/null || true
+
+  echo "✅ Feature flag disabled and cartservice pod restarted"
 else
   echo "Warning: Could not find flagd ConfigMap, skipping flag cleanup"
 fi

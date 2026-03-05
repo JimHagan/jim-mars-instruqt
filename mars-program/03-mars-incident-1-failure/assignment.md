@@ -3,7 +3,7 @@ slug: mars-incident-1-failure
 id: hyun1dpgehs4
 type: challenge
 title: 'Incident 1: Failure'
-teaser: A critical service is experiencing performance issues
+teaser: Customers can't complete purchases — something is broken in the catalog
 tabs:
 - id: wcivltpnoqh8
   title: Check
@@ -21,36 +21,67 @@ timelimit: 1800
 enhanced_loading: null
 ---
 
-# 🚨 Incident Alert: Checkout Service Performance Degradation
+# 🚨 Incident Alert: Product Errors Spiking
 
-Your team has received an alert from New Relic indicating that the **Astronomy Shop** checkout service is experiencing degraded performance.
-Customers are reporting slow checkout times, which is impacting revenue during a critical sales period.
+**Severity:** P1 — Customer-Facing
+**Impact:** Customers are reporting errors when trying to view or purchase specific products
 
-## Your Mission
+Your team has been paged. New Relic is showing a spike in errors on the **Astronomy Shop**.
+Reports are coming in that certain product pages are failing to load, blocking customers from completing purchases.
 
-Use New Relic to investigate this incident and identify:
+## 🎯 Your Mission
 
-1. **Which service** is the root cause of the degradation?
-2. **What type of issue** is affecting the service? (e.g., high latency, high error rate, resource exhaustion)
-3. **What is the specific root cause** of the problem?
+Use New Relic to investigate and identify:
 
-## Getting Started
+1. **Which service** is generating the errors?
+2. **What type of issue** is affecting the service?
+3. **What is the root cause** of the problem?
 
-1. Check the alert you will receive on Slack
-2. Use New Relic APM, distributed tracing, and other observability tools to investigate
-3. Once you've identified the answers, go to the **Check** terminal tab
-4. Enter your answers in the following format (separated by semi-colons):
-   ```
-   service name; issue type; root cause
-   ```
-   **Example:** `productcatalogservice; high latency; database connection timeout`
-5. Click the **Check** button to validate your answers
-6. If incorrect, you can re-enter your answers in the terminal
+## 🔍 Investigation Guide
 
-## Important Notes
+Start broad, then narrow down:
 
-- ⏱️ You have **30 minutes** to resolve this incident
-- 💡 If you're stuck after 15 minutes, ask your instructor for hints
-- 🎯 Answer all questions correctly to automatically resolve the incident
+### Step 1: Check Your Workload Health
+1. In New Relic, go to **Workloads** and open your team's workload
+2. Look for any entities showing **red** or **degraded** status
+3. Note which services are alerting
 
-Good luck! 🚀
+### Step 2: Dig into APM
+1. Go to **APM & Services**
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
+
+### Step 3: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+### Step 4: Examine the Evidence
+In the failing trace, look for:
+- What is the **error message** on the failing span?
+- Is the error tied to a **specific product ID** or all products?
+- What span attribute tells you which product is affected?
+
+## 📝 Submit Your Answers
+
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
+
+```
+service name; issue type; root cause
+```
+
+**Example:** `checkoutservice; high error rate; database connection timeout`
+
+**Format hints:**
+- Service name: use the exact name as it appears in New Relic (e.g., `productcatalogservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
+
+Click the **Check** button to validate. You can re-enter if incorrect.
+
+## ⏱️ Notes
+
+- You have **30 minutes** for this incident
+- If stuck after 15 minutes, ask your Game Manager for a hint
+- Your SLO burn rate is ticking — move fast! 🚀

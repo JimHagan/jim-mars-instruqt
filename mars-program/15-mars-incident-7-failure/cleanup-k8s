@@ -1,26 +1,21 @@
 #!/bin/bash
-set -uo pipefail  # No -e flag, script continues on errors
+set -uo pipefail
 
-echo "=== Cleaning up Incident 2: Payment Service Unreachable ==="
+echo "=== Cleaning up Incident 7: Ad Service High CPU ==="
 
-# Clean up answer file
 rm -f /tmp/answers.json
 
-# Disable the paymentUnreachable feature flag by updating the ConfigMap
-echo "Disabling paymentUnreachable feature flag..."
+echo "Disabling adHighCpu feature flag..."
 
-# Get the flagd ConfigMap
 CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
 
 if [ -n "$CONFIGMAP_NAME" ]; then
   echo "Found ConfigMap: $CONFIGMAP_NAME"
 
-  # Update the ConfigMap to disable the flag
   kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-    jq '.data["demo.flagd.json"] | fromjson | .flags.paymentUnreachable.defaultVariant = "off" | .flags.paymentUnreachable.state = "DISABLED" | tojson' | \
+    jq '.data["demo.flagd.json"] | fromjson | .flags.adHighCpu.defaultVariant = "off" | .flags.adHighCpu.state = "DISABLED" | tojson' | \
     kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
 
-  # Restart flagd pod to apply changes
   echo "Restarting flagd pod to apply changes..."
   kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
 

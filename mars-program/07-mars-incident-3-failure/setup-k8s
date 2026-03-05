@@ -1,10 +1,10 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== Setting up Incident 1: Checkout Service Degradation ==="
+echo "=== Setting up Incident 3: Image Slow Load ==="
 
-# Get the flagd ConfigMap and update it to enable productCatalogFailure
-echo "Enabling productCatalogFailure feature flag via ConfigMap..."
+# Get the flagd ConfigMap and update it to enable imageSlowLoad
+echo "Enabling imageSlowLoad feature flag via ConfigMap..."
 
 # Get current config from ConfigMap
 CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
@@ -18,9 +18,12 @@ fi
 
 echo "Found ConfigMap: $CONFIGMAP_NAME"
 
-# Get the current config, modify it, and update the ConfigMap
+# Enable imageSlowLoad with a high delay variant for noticeable impact.
+# The flag uses numeric variants representing delay in milliseconds.
+# We use "500" (500ms delay) here; the spreadsheet recommends 30000ms+ for maximum impact.
+# Adjust the variant value if the flag supports different delay options.
 kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.productCatalogFailure.defaultVariant = "on" | .flags.productCatalogFailure.state = "ENABLED" | tojson' | \
+  jq '.data["demo.flagd.json"] | fromjson | .flags.imageSlowLoad.defaultVariant = "500" | .flags.imageSlowLoad.state = "ENABLED" | tojson' | \
   kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
 
 # Restart flagd pod to pick up the new configuration
@@ -31,5 +34,5 @@ kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
 echo "Waiting for flagd pod to be ready..."
 kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
 
-echo "✅ Incident triggered!"
+echo "✅ Incident triggered! Image loading is now artificially delayed."
 echo ""

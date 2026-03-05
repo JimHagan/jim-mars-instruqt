@@ -1,9 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-# Define account name for validation messages
-ACCOUNT_NAME="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
-
 # Check if answer file exists
 ANSWER_FILE="/tmp/answers.json"
 if [[ ! -f "$ANSWER_FILE" ]]; then
@@ -31,12 +28,11 @@ fi
 
 echo "🔍 Searching for workload '$WORKLOAD_NAME'..."
 
-# GraphQL query to search for workload using entitySearch
-# Use accountId (not tags.accountId) to scope to the specific account
+# GraphQL query to get workload and its entities
 WORKLOAD_QUERY=$(cat <<'GQL'
 {
   actor {
-    entitySearch(query: "accountId = %ACCOUNT_ID% AND type = 'WORKLOAD' AND name = '%WORKLOAD_NAME%'") {
+    entitySearch(query: "type = 'WORKLOAD' AND name = '%WORKLOAD_NAME%' AND tags.accountId = '%ACCOUNT_ID%'") {
       results {
         entities {
           guid
@@ -127,6 +123,7 @@ if [[ "$QUERY_COUNT" == "0" ]]; then
 fi
 
 # Check if workload query includes the account tag (either account name or account ID)
+ACCOUNT_NAME="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
 HAS_ACCOUNT_NAME=$(echo "$SEARCH_QUERIES" | jq --arg accountName "$ACCOUNT_NAME" '[.[] | select(.query | contains($accountName))] | length > 0')
 HAS_ACCOUNT_ID=$(echo "$SEARCH_QUERIES" | jq --arg accountId "$NR_ACCOUNT_ID" '[.[] | select(.query | contains($accountId))] | length > 0')
 
@@ -138,13 +135,193 @@ fi
 
 echo "✅ Workload configuration validated successfully"
 
-# Store workload GUID for cleanup
-echo "$WORKLOAD_GUID" > /tmp/mars_workload_guid
+# Get entities for team ownership (using account ID for consistency)
+echo "🔍 Fetching entities to add to team..."
+
+ENTITIES_QUERY=$(cat <<'GQL'
+{
+  actor {
+    entitySearch(query: "tags.accountId = '%ACCOUNT_ID%'") {
+      results {
+        entities {
+          guid
+          name
+          type
+          domain
+        }
+      }
+    }
+  }
+}
+GQL
+)
+
+ENTITIES_QUERY="${ENTITIES_QUERY//%ACCOUNT_ID%/$NR_ACCOUNT_ID}"
+
+ENTITIES_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$ENTITIES_QUERY" | jq -Rs .)}")
+
+# Check for errors
+if echo "$ENTITIES_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$ENTITIES_RESPONSE" | jq -r '.errors[0].message // "Unknown error"')
+    fail-message "❌ Error fetching entities: $ERROR_MSG"
+    exit 1
+fi
+
+# Get entity list
+ENTITIES=$(echo "$ENTITIES_RESPONSE" | jq -r '.data.actor.entitySearch.results.entities // []')
+ENTITY_COUNT=$(echo "$ENTITIES" | jq 'length')
+
+echo "  Found $ENTITY_COUNT entities in account"
+
+# Auto-create team with the same name
+# Note: API will atomically reject if team already exists
+echo "🎯 Creating New Relic Team '$WORKLOAD_NAME'..."
+
+# Get organization ID for team scope
+ORG_QUERY='{ actor { organization { id } } }'
+ORG_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "{\"query\": $(echo "$ORG_QUERY" | jq -Rs .)}")
+
+ORG_ID=$(echo "$ORG_RESPONSE" | jq -r '.data.actor.organization.id // empty')
+
+if [[ -z "$ORG_ID" ]]; then
+    fail-message "❌ Could not get organization ID for team creation"
+    exit 1
+fi
+
+# Create team and get ownership collection ID
+CREATE_TEAM_MUTATION='mutation($teamName: String!, $orgId: ID!) {
+  entityManagementCreateTeam(
+    teamEntity: {
+      name: $teamName,
+      scope: {
+        id: $orgId,
+        type: ORGANIZATION
+      }
+    }
+  ) {
+    entity {
+      id
+      name
+      ownership {
+        id
+      }
+    }
+  }
+}'
+
+# Build the full GraphQL request with variables
+TEAM_REQUEST=$(jq -n \
+  --arg query "$CREATE_TEAM_MUTATION" \
+  --arg teamName "$WORKLOAD_NAME" \
+  --arg orgId "$ORG_ID" \
+  '{query: $query, variables: {teamName: $teamName, orgId: $orgId}}')
+
+TEAM_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+  -H "Content-Type: application/json" \
+  -H "API-Key: ${NR_API_KEY}" \
+  -d "$TEAM_REQUEST")
+
+# Check if team was created successfully
+if echo "$TEAM_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+    ERROR_MSG=$(echo "$TEAM_RESPONSE" | jq -r '.errors[0].message')
+    if echo "$ERROR_MSG" | grep -q "already exists"; then
+        fail-message "❌ Team '$WORKLOAD_NAME' already exists! Please choose a different workload name or delete the existing team first."
+    else
+        fail-message "❌ Failed to create team '$WORKLOAD_NAME': $ERROR_MSG"
+    fi
+    exit 1
+else
+    TEAM_ID=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.id // empty')
+    TEAM_NAME=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.name // empty')
+    OWNERSHIP_COLLECTION_ID=$(echo "$TEAM_RESPONSE" | jq -r '.data.entityManagementCreateTeam.entity.ownership.id // empty')
+
+    if [[ -z "$TEAM_ID" ]] || [[ "$TEAM_ID" == "null" ]]; then
+        fail-message "❌ Team creation failed - no ID returned"
+        exit 1
+    fi
+
+    if [[ -z "$OWNERSHIP_COLLECTION_ID" ]] || [[ "$OWNERSHIP_COLLECTION_ID" == "null" ]]; then
+        fail-message "❌ Failed to get ownership collection ID from team creation"
+        exit 1
+    fi
+
+    echo "✅ Team '$TEAM_NAME' created with ID: $TEAM_ID"
+    echo "✅ Ownership collection ID: $OWNERSHIP_COLLECTION_ID"
+fi
+
+# Now add the workload and ALL entities to the team's ownership collection
+echo "🔗 Adding workload and entities to team..."
+
+# Get all entity GUIDs (including infrastructure)
+ALL_GUIDS=$(echo "$ENTITIES" | jq -r '[.[].guid]')
+ALL_COUNT=$(echo "$ALL_GUIDS" | jq 'length')
+
+echo "  Found $ALL_COUNT entities to add (including infrastructure)"
+
+# Create array of GUIDs to add (workload + all entities)
+# The workload GUID might already be in the list, but that's okay - New Relic will handle duplicates
+ENTITIES_TO_ADD=$(echo "$ALL_GUIDS" | jq --arg wguid "$WORKLOAD_GUID" '. + [$wguid] | unique')
+TOTAL_TO_ADD=$(echo "$ENTITIES_TO_ADD" | jq 'length')
+
+echo "  Total entities to add (including workload): $TOTAL_TO_ADD"
+
+# New Relic has a limit of 100 entities per request, so batch if needed
+BATCH_SIZE=100
+TOTAL_ADDED=0
+
+# Use entityManagementAddCollectionMembers to add entities to the ownership collection
+ADD_ENTITIES_MUTATION='mutation($collectionId: ID!, $ids: [ID!]!) {
+  entityManagementAddCollectionMembers(collectionId: $collectionId, ids: $ids)
+}'
+
+# Calculate number of batches needed
+NUM_BATCHES=$(echo "$ENTITIES_TO_ADD" | jq --arg size "$BATCH_SIZE" 'length / ($size | tonumber) | ceil')
+
+echo "  Adding entities in $NUM_BATCHES batch(es)..."
+
+for ((batch=0; batch<NUM_BATCHES; batch++)); do
+    # Get batch of entities (max 100)
+    OFFSET=$((batch * BATCH_SIZE))
+    BATCH_ENTITIES=$(echo "$ENTITIES_TO_ADD" | jq --arg offset "$OFFSET" --arg size "$BATCH_SIZE" '.[$offset | tonumber : ($offset | tonumber) + ($size | tonumber)]')
+    BATCH_COUNT=$(echo "$BATCH_ENTITIES" | jq 'length')
+
+    echo "  Batch $((batch + 1))/$NUM_BATCHES: Adding $BATCH_COUNT entities..."
+
+    ADD_REQUEST=$(jq -n \
+      --arg query "$ADD_ENTITIES_MUTATION" \
+      --arg collectionId "$OWNERSHIP_COLLECTION_ID" \
+      --argjson ids "$BATCH_ENTITIES" \
+      '{query: $query, variables: {collectionId: $collectionId, ids: $ids}}')
+
+    ADD_RESPONSE=$(curl -s -X POST https://api.newrelic.com/graphql \
+      -H "Content-Type: application/json" \
+      -H "API-Key: ${NR_API_KEY}" \
+      -d "$ADD_REQUEST")
+
+    if echo "$ADD_RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
+        ERROR_MSG=$(echo "$ADD_RESPONSE" | jq -r '.errors[0].message')
+        fail-message "❌ Failed to add entities (batch $((batch + 1))): $ERROR_MSG"
+        exit 1
+    fi
+
+    TOTAL_ADDED=$((TOTAL_ADDED + BATCH_COUNT))
+    echo "  ✅ Batch $((batch + 1)) complete"
+done
+
+echo "✅ Successfully added $TOTAL_ADDED entities to team"
 
 # Success!
 echo ""
 echo "═══════════════════════════════════════════════════════════════════"
 echo "✅ Perfect! Workload '$WORKLOAD_NAME' is properly configured!"
 echo "🎯 Workload query validated successfully"
+echo "📊 Found $ENTITY_COUNT entities in account"
+echo "🏆 Team created with all $TOTAL_ADDED entities (including infrastructure)!"
 echo "═══════════════════════════════════════════════════════════════════"
 exit 0

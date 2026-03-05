@@ -1,10 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== Setting up Incident 5: Cart Service Failure ==="
+echo "=== Setting up Incident 7: Ad Service High CPU ==="
 
-echo "Enabling cartFailure feature flag via ConfigMap..."
+echo "Enabling adHighCpu feature flag via ConfigMap..."
 
+# Note: The adHighCpu flag uses a numeric variant representing the number of
+# CPU-spinning threads. The default (4 threads) has minimal impact; we use
+# a higher value to make the CPU spike observable. Adjust if needed.
 CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
 if [ -z "$CONFIGMAP_NAME" ]; then
@@ -15,8 +18,9 @@ fi
 
 echo "Found ConfigMap: $CONFIGMAP_NAME"
 
+# Use "on" variant to enable the flag (adjust variant name if the flag uses numeric threads)
 kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.cartFailure.defaultVariant = "on" | .flags.cartFailure.state = "ENABLED" | tojson' | \
+  jq '.data["demo.flagd.json"] | fromjson | .flags.adHighCpu.defaultVariant = "on" | .flags.adHighCpu.state = "ENABLED" | tojson' | \
   kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
 
 echo "Restarting flagd pod to apply changes..."
@@ -25,5 +29,6 @@ kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
 echo "Waiting for flagd pod to be ready..."
 kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
 
-echo "✅ Incident triggered! Cart service will now fail."
+echo "✅ Incident triggered! Ad service CPU load is now elevated."
+echo "Note: Allow 1-2 minutes for CPU metrics to become clearly visible in New Relic."
 echo ""

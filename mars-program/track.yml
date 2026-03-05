@@ -12,6 +12,7 @@ developers:
 - staylor@newrelic.com
 - dgomezblanco@newrelic.com
 - reeselee@newrelic.com
+- jhagan@newrelic.com
 show_timer: true
 timelimit: 10800
 lab_config:

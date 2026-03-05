@@ -39,7 +39,7 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-Start broad, then narrow down:
+Start broad, then narrow down.  As always check your configured workloads:
 
 
 ### Step 1: Dig into APM

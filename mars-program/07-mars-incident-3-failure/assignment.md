@@ -40,6 +40,8 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
+Start broad, then narrow down.  As always check your configured workloads:
+
 ### Step 1: Reproduce the Problem
 Open the **Astronomy Shop** tab and navigate to a product detail page.
 Click on any product. What do you notice?
@@ -78,17 +80,17 @@ Once you've identified the root cause, go to the **Check** terminal and enter:
 service name; issue type; root cause
 ```
 
-**Example:** `imageprovider; high latency; image slow load`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: which service is responsible? (e.g., `imageprovider`)
-- Issue type: what kind of problem is this? (e.g., `high latency`)
-- Root cause: what is causing the slowness? (e.g., `image slow load`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
-- Hint: this is a latency issue, not an error — check response time metrics, not error rates 🚀
+- Your SLO burn rate is ticking — move fast! 🚀

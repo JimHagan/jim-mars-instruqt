@@ -38,54 +38,54 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-### Step 1: Check Workload for Resource Issues
-1. Open your New Relic **Workload**
-2. Look for services showing resource saturation rather than errors
-3. This incident involves **CPU**, not memory — look at CPU utilization metrics
+Start broad, then narrow down:
 
-### Step 2: APM — Check Response Time
-1. Go to **APM & Services → adservice**
-2. Look at the **Summary** — what is the response time compared to baseline?
-3. Error rate may be low, but response time should be elevated
-4. Check the **Transactions** tab — which transaction is slowest?
 
-### Step 3: Infrastructure / Container Metrics
-1. Go to **Infrastructure** and find the `adservice` container/pod
-2. Look at the **CPU usage** metric — is it near or at the CPU limit?
-3. What is the CPU utilization pattern? (spike vs. sustained high)
-4. Compare to other services — is this uniquely high?
+### Step 1: Dig into APM
+1. Go to **APM & Services**
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 4: Kubernetes Cluster Explorer
-1. In the **Kubernetes Cluster Explorer**, find the `adservice` pod
-2. Check the CPU utilization as a percentage of the configured CPU limit
-3. Is the pod being **CPU throttled**? (throttling occurs when a pod tries to use more CPU than its limit)
-4. Look at **resource limits** — how much CPU is the pod allowed?
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-### Step 5: Trace Analysis
-1. Go to **APM → adservice → Distributed Tracing**
-2. Open slow traces — what operations take the most time?
-3. Are the long spans tied to CPU-intensive work (computation, algorithms) rather than I/O or network calls?
-4. Look for spans with high duration but no downstream service calls — pure CPU work
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
+
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
+
+### Step 5: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
 ```
 service name; issue type; root cause
 ```
 
-**Example:** `adservice; high cpu; ad service high cpu`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: which service? (e.g., `adservice`)
-- Issue type: what kind of problem? (e.g., `high cpu`)
-- Root cause: what is causing it? (e.g., `ad service high cpu`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
-- This is a **CPU resource** incident — focus on CPU metrics, not error rates
-- If stuck after 15 minutes, ask your Game Manager for a hint 🚀
+- If stuck after 15 minutes, ask your Game Manager for a hint
+- Your SLO burn rate is ticking — move fast! 🚀

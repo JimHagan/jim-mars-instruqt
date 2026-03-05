@@ -40,59 +40,54 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-### Step 1: Reproduce the Problem
-Open the **Astronomy Shop** tab and try to complete a purchase:
-1. Add any item to your cart
-2. Click **Place Order**
-3. What error do you see?
+Start broad, then narrow down:
 
-### Step 2: Check APM for Error Spikes
-1. Go to **APM & Services** in New Relic
-2. Look for any service with a spiking **error rate**
-3. Which service is showing errors — and what does the error message say?
 
-### Step 3: Follow the Trace
-In APM, click into the service with errors and go to **Distributed Tracing**:
-1. Filter for traces with **errors**
-2. Open a failing trace and examine the **waterfall**
-3. Which span is failing? What is the error message on that span?
-4. Pay attention to the **relationship between services** — which service is the *caller* and which is the *callee*?
+### Step 1: Dig into APM
+1. Go to **APM & Services**
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 4: Read the Error Message Carefully
-The error message in the failing span will tell you exactly what went wrong.
-Look for keywords like:
-- "connection refused"
-- "host not found"
-- "dial tcp"
-- "no such host"
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-This type of error indicates a **network connectivity problem** between two services.
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
 
-### Step 5: Identify the Root Cause
-Based on what you find in the trace:
-- Which service is **making the call that fails**?
-- Which **downstream service** is it trying to reach?
-- What does the error tell you about *why* the call fails?
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
+
+### Step 5: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
 ```
 service name; issue type; root cause
 ```
 
-**Example:** `checkoutservice; high error rate; payment service unreachable`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: the service where the error originates (e.g., `checkoutservice`)
-- Issue type: what kind of problem is this? (e.g., `high error rate`)
-- Root cause: what is causing the failure? (e.g., `payment service unreachable`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
-- Every second counts — customers can't check out! 🚀
+- Your SLO burn rate is ticking — move fast! 🚀

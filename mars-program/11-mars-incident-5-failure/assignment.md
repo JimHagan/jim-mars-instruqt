@@ -38,54 +38,54 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-### Step 1: Reproduce the Problem
-Open the **Astronomy Shop** tab:
-1. Click on any product
-2. Try clicking **Add to Cart**
-3. What error do you see?
-4. Also try clicking the **Cart** icon to view your cart
+Start broad, then narrow down:
 
-### Step 2: Check APM for Error Spikes
-1. Go to **APM & Services** in New Relic
-2. Look for services with a spiking **error rate**
-3. Which service is erroring — and what are the affected operations? (Hint: look for `AddItem`, `GetCart`, `EmptyCart`)
 
-### Step 3: Examine the Error
-In the service's APM view:
-1. Click the **Errors** tab
-2. Read the error message carefully — what does it tell you about what the cart service is failing to do?
-3. Is this an internal logic error, or is the cart service failing to connect to something?
+### Step 1: Dig into APM
+1. Go to **APM & Services**
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 4: Follow the Trace
-Go to **Distributed Tracing** and open a failing trace:
-1. Find the span that errors — which operation is it?
-2. Look at the span attributes — is there a backing store (like Redis/Valkey) mentioned in the error?
-3. What does the error message tell you about *why* the operation fails?
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-### Step 5: Check Infrastructure (Optional)
-If you have access to Kubernetes metrics:
-- Is the `cartservice` pod healthy?
-- Are there any pod restarts or OOMKills visible in the K8s Cluster Explorer?
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
+
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
+
+### Step 5: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
 ```
 service name; issue type; root cause
 ```
 
-**Example:** `cartservice; high error rate; cart failure`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: which service is failing? (e.g., `cartservice`)
-- Issue type: what kind of problem? (e.g., `high error rate`)
-- Root cause: what is causing the failure? (e.g., `cart failure`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
-- Hint: the cart service depends on a backing store — check if that connection is the issue 🚀
+- Your SLO burn rate is ticking — move fast! 🚀

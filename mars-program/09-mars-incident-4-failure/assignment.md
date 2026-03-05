@@ -39,59 +39,54 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-### Step 1: Reproduce the Problem
-Open the **Astronomy Shop** tab and try to complete a purchase:
-1. Add an item to your cart
-2. Click **Place Order**
-3. Try this **multiple times** — what do you notice?
-   - Does it fail every time, or just sometimes?
-   - What error message do you see when it fails?
+Start broad, then narrow down:
 
-The intermittent nature is an important clue.
 
-### Step 2: Check APM Error Rate
+### Step 1: Dig into APM
 1. Go to **APM & Services**
-2. Look for services with elevated **error rates** (but less than 100%)
-3. Which service is showing intermittent errors?
-4. What is the approximate error rate? (10%? 25%? 50%?)
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 3: Look at Errors Inbox
-1. Go to **Errors Inbox** and filter by the affected service
-2. What error message is appearing?
-3. Look at the **occurrence count** and **frequency** — is it random or patterned?
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-### Step 4: Dig into Distributed Traces
-In APM, find the affected service and go to **Distributed Tracing**:
-1. Filter for traces containing errors
-2. Compare a **failing trace** with a **successful trace** side by side
-3. Which specific operation is failing?
-4. Look at span attributes on the failing span — is there any attribute (like `app.payment.amount`) that differs between successful and failed transactions?
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
 
-### Step 5: Identify the Root Cause
-Based on your investigation:
-- Is the failure truly random, or does it correlate with something (transaction amount, product type, user)?
-- What does the error message tell you about what's happening in the payment service?
-- What is causing the `paymentservice` to intermittently reject charges?
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
+
+### Step 5: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
 ```
 service name; issue type; root cause
 ```
 
-**Example:** `paymentservice; high error rate; payment failure`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: which service has the errors? (e.g., `paymentservice`)
-- Issue type: what kind of problem is this? (e.g., `high error rate`)
-- Root cause: what is causing the failures? (e.g., `payment failure`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
-- Hint: look at the **payment service itself**, not checkout — the error is generated inside payment 🚀
+- Your SLO burn rate is ticking — move fast! 🚀

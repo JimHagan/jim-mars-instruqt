@@ -38,62 +38,54 @@ Use New Relic to investigate and identify:
 
 ## 🔍 Investigation Guide
 
-This incident requires you to look **below the application layer** into Kubernetes infrastructure signals.
+Start broad, then narrow down:
 
-### Step 1: Check APM — The Symptom
-1. Go to **APM & Services → cartservice**
-2. Look at the error rate and throughput
-3. You might see: throughput dropping to near-zero (no traffic reaching the pod) OR 503 errors from the ingress
 
-### Step 2: Kubernetes Cluster Explorer — The Root Cause Signal
-This is where this incident lives:
-1. In New Relic, go to **Kubernetes** (search "Cluster Explorer" or "Kubernetes")
-2. Navigate to the `opentelemetry-demo` namespace
-3. Find the `cartservice` pod
-4. Look at the pod **status** — is it `Ready` or `Not Ready`?
-5. Check **pod events** — look for readiness probe failure messages like:
-   - "Readiness probe failed: ..."
-   - "Back-off restarting failed container"
+### Step 1: Dig into APM
+1. Go to **APM & Services**
+2. Look for services with elevated **error rates** (check the error % column)
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 3: Read the Kubernetes Events
-In the Kubernetes Cluster Explorer pod view:
-1. Find the **Events** section for the `cartservice` pod
-2. What does the readiness probe failure message say?
-3. How frequently is the probe failing?
-4. Is the pod being **restarted** or just kept out of the service endpoint rotation?
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-### Step 4: Understand Readiness vs. Liveness
-Think about what a **readiness probe failure** means:
-- The pod is **running** (it exists and the container is up)
-- But the pod **fails its readiness check** (it signals to Kubernetes: "I'm not ready to serve traffic yet")
-- Kubernetes responds by removing the pod from the service's endpoint list
-- Traffic that would have gone to this pod is either rejected (503) or routed to other pods
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
 
-### Step 5: Correlate with APM
-Go back to **APM → cartservice**:
-- Is the throughput suddenly dropping to zero?
-- Are there 503 errors appearing in the upstream services (frontend calling cart)?
-- Check **Distributed Tracing** — are requests to the cart service being rejected at the network level?
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
+
+### Step 5: Try to Reproduce
+Open the **Astronomy Shop** tab and browse the product catalog.
+Try clicking on **"Roof Binoculars"** — what happens?
+
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
 ```
 service name; issue type; root cause
 ```
 
-**Example:** `cartservice; readiness probe failure; failed readiness probe`
+**Example:** `checkoutservice; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: which service? (e.g., `cartservice`)
-- Issue type: what kind of problem? (e.g., `readiness probe failure`)
-- Root cause: what is causing it? (e.g., `failed readiness probe`)
+- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Issue type: describe what you observe (e.g., `high error rate`)
+- Root cause: what is causing this? (e.g., `product catalog failure`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
 - You have **30 minutes** for this incident
-- This is a **Kubernetes infrastructure** incident — look in the Kubernetes Cluster Explorer, not just APM
-- If stuck after 15 minutes, ask your Game Manager for a hint 🚀
+- If stuck after 15 minutes, ask your Game Manager for a hint
+- Your SLO burn rate is ticking — move fast! 🚀

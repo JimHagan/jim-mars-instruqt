@@ -12,6 +12,6 @@ virtualmachines:
     TF_VAR_app_name: frontend
     TF_VAR_newrelic_parent_account_id: "6879196"
     TF_VAR_readonly_role_name: all_product_admin
-  machine_type: n1-standard-4
+  machine_type: n2-standard-4
 secrets:
 - name: MARS_PARENT_API_KEY

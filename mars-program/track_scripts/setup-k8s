@@ -33,6 +33,52 @@ sudo apt-get update
 sudo apt-get install -y terraform curl jq
 echo "✅ Dependencies installed!"
 
+# --- CLONE CHARTS LOCALLY AND PACKAGE DEPENDENCIES --- (TODO: should not need this if timeouts on https://release-assets.githubusercontent.com/ weren't happening)
+# Clone the main Helm chart repos at specific release tags for stability
+cd "${WORK_DIR}"
+echo "Cloning Helm chart repositories..."
+git clone --branch nr-k8s-otel-collector-0.10.9 --depth 1 https://github.com/newrelic/helm-charts.git
+git clone --branch opentelemetry-demo-0.40.5 --depth 1 https://github.com/open-telemetry/opentelemetry-helm-charts.git
+
+# Clone dependency repos at specific release tags (even for disabled charts, Helm expects the .tgz files to exist)
+echo "Cloning dependency chart repositories..."
+git clone --branch prometheus-28.13.0 --depth 1 https://github.com/prometheus-community/helm-charts.git prometheus-charts
+git clone --branch jaeger-4.5.0 --depth 1 https://github.com/jaegertracing/helm-charts.git jaeger-charts
+git clone --branch opensearch-3.5.0 --depth 1 https://github.com/opensearch-project/helm-charts.git opensearch-charts
+git clone --depth 1 https://github.com/bitnami/charts.git bitnami-charts
+
+# Clone grafana from the new community location
+git clone --branch grafana-11.3.0 --depth 1 https://github.com/grafana-community/helm-charts.git grafana-charts
+
+# Package all dependencies locally
+echo "Packaging chart dependencies locally..."
+mkdir -p "${WORK_DIR}/helm-charts/charts/nr-k8s-otel-collector/charts"
+mkdir -p "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+mkdir -p "${WORK_DIR}/jaeger-charts/charts/jaeger/charts"
+mkdir -p "${WORK_DIR}/prometheus-charts/charts/prometheus/charts"
+
+# For nr-k8s-otel-collector: common-library + kube-state-metrics
+helm package "${WORK_DIR}/helm-charts/library/common-library" -d "${WORK_DIR}/helm-charts/charts/nr-k8s-otel-collector/charts"
+helm package "${WORK_DIR}/prometheus-charts/charts/kube-state-metrics" -d "${WORK_DIR}/helm-charts/charts/nr-k8s-otel-collector/charts"
+
+# Package bitnami common for jaeger first (jaeger depends on it)
+helm package "${WORK_DIR}/bitnami-charts/bitnami/common" -d "${WORK_DIR}/jaeger-charts/charts/jaeger/charts"
+
+# Package prometheus sub-dependencies (prometheus depends on these)
+helm package "${WORK_DIR}/prometheus-charts/charts/alertmanager" -d "${WORK_DIR}/prometheus-charts/charts/prometheus/charts"
+helm package "${WORK_DIR}/prometheus-charts/charts/kube-state-metrics" -d "${WORK_DIR}/prometheus-charts/charts/prometheus/charts"
+helm package "${WORK_DIR}/prometheus-charts/charts/prometheus-node-exporter" -d "${WORK_DIR}/prometheus-charts/charts/prometheus/charts"
+helm package "${WORK_DIR}/prometheus-charts/charts/prometheus-pushgateway" -d "${WORK_DIR}/prometheus-charts/charts/prometheus/charts"
+
+# For opentelemetry-demo: all dependencies (even disabled ones must be present for Helm)
+helm package "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-collector" -d "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+helm package "${WORK_DIR}/jaeger-charts/charts/jaeger" -d "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+helm package "${WORK_DIR}/prometheus-charts/charts/prometheus" -d "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+helm package "${WORK_DIR}/grafana-charts/charts/grafana" -d "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+helm package "${WORK_DIR}/opensearch-charts/charts/opensearch" -d "${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo/charts"
+
+echo "✅ All charts and dependencies packaged locally!"
+
 # --- CLONE REPO AND SETUP CONFIG ---
 echo "Cloning New Relic's OpenTelemetry Demo..."
 git clone https://github.com/newrelic/opentelemetry-demo
@@ -138,6 +184,15 @@ in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
 
 chmod +x "${INSTALL_SCRIPT}"
 echo "✅ install-k8s.sh patched!"
+
+# --- CHANGE install-k8s.sh FOR CLONED REPOS --- (TODO: should not need this if timeouts on https://release-assets.githubusercontent.com/ weren't happening)
+# Intercept the scripts: Find and replace the remote chart references with absolute local paths
+# (This uses your current directory $PWD so Helm knows exactly where to look)
+SCRIPT_PATH="${WORK_DIR}/opentelemetry-demo/newrelic/scripts/install-k8s.sh"
+
+echo "Patching $SCRIPT_PATH to use local charts..."
+sed -i "s|newrelic/nr-k8s-otel-collector|${WORK_DIR}/helm-charts/charts/nr-k8s-otel-collector|g" "$SCRIPT_PATH"
+sed -i "s|open-telemetry/opentelemetry-demo|${WORK_DIR}/opentelemetry-helm-charts/charts/opentelemetry-demo|g" "$SCRIPT_PATH"
 
 # --- DEPLOY DEMO TO KUBERNETES ---
 echo "Deploying OpenTelemetry Demo..."

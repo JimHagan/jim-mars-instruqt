@@ -1,0 +1,30 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "=== Setting up Incident 9: Failed Readiness Probe ==="
+
+echo "Enabling failedReadinessProbe feature flag via ConfigMap..."
+
+CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+if [ -z "$CONFIGMAP_NAME" ]; then
+  echo "ERROR: Could not find flagd ConfigMap"
+  kubectl get configmaps -n opentelemetry-demo
+  exit 1
+fi
+
+echo "Found ConfigMap: $CONFIGMAP_NAME"
+
+kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
+  jq '.data["demo.flagd.json"] | fromjson | .flags.failedReadinessProbe.defaultVariant = "on" | .flags.failedReadinessProbe.state = "ENABLED" | tojson' | \
+  kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+
+echo "Restarting flagd pod to apply changes..."
+kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+
+echo "Waiting for flagd pod to be ready..."
+kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
+
+echo "✅ Incident triggered! The cartservice readiness probe will now begin failing."
+echo "Note: Allow 30-60 seconds for Kubernetes to detect the probe failure and remove the pod from rotation."
+echo ""

@@ -1,0 +1,34 @@
+#!/bin/bash
+set -uo pipefail
+
+echo "=== Cleaning up Incident 9: Failed Readiness Probe ==="
+
+rm -f /tmp/answers.json
+
+echo "Disabling failedReadinessProbe feature flag..."
+
+CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -n "$CONFIGMAP_NAME" ]; then
+  echo "Found ConfigMap: $CONFIGMAP_NAME"
+
+  kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
+    jq '.data["demo.flagd.json"] | fromjson | .flags.failedReadinessProbe.defaultVariant = "off" | .flags.failedReadinessProbe.state = "DISABLED" | tojson' | \
+    kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+
+  echo "Restarting flagd pod to apply changes..."
+  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+
+  # Allow time for flagd to restart before the cartservice pod re-evaluates the flag
+  sleep 10
+
+  # Force a restart of the cartservice pod to clear any NotReady state
+  echo "Restarting cartservice pod to restore readiness..."
+  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/name=cartservice 2>/dev/null || true
+
+  echo "✅ Feature flag disabled and cartservice pod restarted"
+else
+  echo "Warning: Could not find flagd ConfigMap, skipping flag cleanup"
+fi
+
+echo "✅ Cleanup complete"

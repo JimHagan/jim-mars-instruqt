@@ -3,7 +3,7 @@ slug: mars-incident-1-failure
 id: hyun1dpgehs4
 type: challenge
 title: 'Incident 1: Failure'
-teaser: Customers can't complete purchases — something is broken
+teaser: Product failures observed
 tabs:
 - id: wcivltpnoqh8
   title: Check
@@ -34,8 +34,8 @@ Reports are coming in that certain product pages are failing to load, blocking c
 Use New Relic to investigate and identify:
 
 1. **Which service** is generating the errors?
-2. **What type of issue** is affecting the service?
-3. **What is the root cause** of the problem?
+2. **Which specific product or products** is failing to load?
+3. **What types of issue** are affecting the service?
 
 ## 🔍 Investigation Guide
 
@@ -64,7 +64,7 @@ Start broad, then narrow down.  As always check your configured workloads:
 
 ### Step 5: Try to Reproduce
 Open the **Astronomy Shop** tab and browse the product catalog.
-Try clicking on **"Roof Binoculars"** — what happens?
+Try clicking on a variety of products. See if you notice any telemetry impact — new errors or changes to golden signals.
 
 
 
@@ -72,16 +72,17 @@ Try clicking on **"Roof Binoculars"** — what happens?
 
 Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
+**Answer Format:**
 ```
-service name; issue type; root cause
+affected service; affected product id; issue type
 ```
 
-**Example:** `search-service; high error rate; database connection timeout`
+**Example:** `shippingservice; product almceykc8x; service timeout`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
-- Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `database connection timeout`)
+- Paste the name of the impacted service: use the exact name as it appears in New Relic (e.g., `shippingservice`)
+- Affected product id: the product that fails to load
+- Issue type: what you observe in APM (e.g., `service timeout`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 
@@ -90,3 +91,31 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
+
+<!--
+=============================================================================
+BETA TESTING REVIEW NOTES — Incident 1 Failure Path
+=============================================================================
+
+## Gotchas to Watch in Beta Testing
+
+- Teams that go to Logs first (Step 3) before APM will struggle to correlate
+  log lines to a specific service without prior context. Watch for groups
+  spending 10+ minutes in Logs before pivoting to APM.
+
+- Alert firing lag: New Relic error rate alerts have an evaluation window
+  (typically 1–5 minutes). If students check alerts immediately after the
+  challenge starts, they may see no active alerts and assume nothing is wrong.
+  Game managers should know this and advise teams to check APM directly if
+  alerts haven't fired yet.
+
+- New Relic APM entity names are case-sensitive. "productcatalogservice"
+  must be entered exactly as it appears. Watch for answers like
+  "ProductCatalogService" or "product-catalog-service". Verify the check
+  script normalizes case.
+
+- The error rate spike may take 1–2 minutes to visibly register in APM after
+  the challenge setup script runs. Groups who jump in immediately may see
+  healthy charts briefly.
+=============================================================================
+-->

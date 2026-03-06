@@ -14,7 +14,7 @@ enhanced_loading: true
 
 ## What Was Happening
 
-The `productCatalogFailure` feature flag was enabled, causing the **Product Catalog service** to return errors for a specific product ID (`OLJCESPC7Z` — "Roof Binoculars"). Any customer who tried to view or purchase that product received a 500 error from the product catalog service.
+The `productCatalogFailure` feature flag was enabled, causing the **Product Catalog service** to return errors for a specific product (`OLJCESPC7Z` — "Explorascope"). Any customer who tried to view or purchase that product received a 500 error from the product catalog service.
 
 ## Alerts For This Incident
 
@@ -109,3 +109,18 @@ The alert links directly back to the APM summary, confirming your finding.
 - **Errors Inbox groups noise into signal.** Instead of reading raw logs, you get a ranked list of what's actually broken.
 - **Span attributes are your evidence.** OpenTelemetry-instrumented services emit rich attributes — `app.product.id`, feature flag names — that pinpoint the exact cause.
 - **Distributed traces connect the dots.** Even if the alert fires on `frontend`, following the trace shows you the real culprit is `productcatalogservice`.
+
+<!--
+BETA NOTES — Incident 1 Golden Path
+
+Improvements:
+- Verify screenshot assets exist and render: product-catalog-failure-alerts.png, product-catalog-failure-errors-inbox.png
+- Add workload fallback note for teams who skipped the readiness challenge
+- "~5 min to root cause" is optimistic for NR newcomers; track actual beta times and update
+- Confirm Instruqt gates golden paths behind passing the failure check (feature flag name is a spoiler)
+
+Gameday gotchas:
+- Errors Inbox filter scope: if not scoped to service, students drown in unrelated errors — watch for "I don't see the error in Errors Inbox"
+- Validate that `error.message: "Feature flag productCatalogFailure is enabled"` actually appears in lab spans
+- Error rate spike may be modest (not 100%); teams used to dramatic numbers may not act on it
+-->

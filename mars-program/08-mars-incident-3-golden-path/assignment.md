@@ -109,3 +109,19 @@ This highlights the value of **proactive alerting on Core Web Vitals** — you c
 - **Start with the user journey.** Browser monitoring connects what users experience (slow pages) to which backend service is responsible (imageprovider). Without it, you'd have to guess which service to check.
 - **LCP is a leading indicator.** Monitoring Core Web Vitals gives you signal on user experience degradation before it becomes a flood of support tickets.
 - **Uniform latency is a smell.** When every span for a service has nearly identical high duration, it's likely injected or configured latency — not a random infrastructure issue. Real resource exhaustion causes variable latency.
+
+<!--
+BETA NOTES — Incident 3 Golden Path
+
+Improvements:
+- Verify asset renders: image-slow-load-homepage.png
+- Step 3 AJAX click-through "often" works — document the APM fallback explicitly for when it doesn't
+- Summary table says "5–30 seconds" — verify actual injected delay and use a specific value
+- Add a prereq note: Browser data needs 2–3 min to populate; if empty, start from APM
+
+Gameday gotchas:
+- Confirm Instruqt gates golden paths behind failure check completion (imageSlowLoad flag name is a spoiler)
+- Browser "AJAX" tab label may differ across NR UI versions (AJAX / AJAX-SPA) — verify in live environment
+- If imageprovider spans lack the `http.url` attribute, Step 4's "smoking gun" disappears — validate span attributes before beta
+- Fast teams (sub-5 min) leave dead time; prepare game manager discussion prompts in advance
+-->

@@ -33,8 +33,8 @@ Your team is paged. New Relic is reporting errors from the cart service. Custome
 Use New Relic to investigate and identify:
 
 1. **Which service** is failing?
-2. **What type of issue** is affecting it?
-3. **What is the root cause** of the problem?
+2. **What backing data store** does it depend on? (Try service maps and workloads)
+3. **What customer action** is completely blocked?
 
 ## 🔍 Investigation Guide
 
@@ -63,7 +63,8 @@ Start broad, then narrow down.  As always check your configured workloads to get
 
 ### Step 5: Try to Reproduce
 Open the **Astronomy Shop** tab and browse the product catalog.
-Try clicking on **"Roof Binoculars"** — what happens?
+Add any product to your cart — what happens?
+- Analyze any error messages that arise?
 
 
 
@@ -71,16 +72,18 @@ Try clicking on **"Roof Binoculars"** — what happens?
 
 Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
+**Answer Format:**
+
 ```
-service name; issue type; root cause
+failing service; backing store; blocked customer action
 ```
 
-**Example:** `search-service; high error rate; database connection timeout`
+**Example:** `checkoutservice; PostgreSQL; place order`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
-- Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `database connection timeout`)
+- Paste the name of the failiing service: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Backing store: what data store does the cart service depend on? (service maps and workloads can help)
+- Blocked customer action: what can customers NOT do? (e.g., `place order`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 
@@ -89,3 +92,39 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
+
+<!--
+
+## Gotchas to Watch in Beta Testing
+
+- The backing store name is the trickiest answer in the track. In OTel
+  spans, the `db.system` attribute will say "redis" (lowercase) even
+  if the actual software is Valkey. The error messages in Application
+  logs/traces may say "Valkey" or "Redis" inconsistently. Run through
+  the actual lab environment and confirm exactly what text appears, then
+  align the check script and the format hint.
+
+- "Blocked customer action" as a free-text field will produce enormous
+  answer variety: "add to cart", "add items to cart", "adding to cart",
+  "cart", "shopping cart", "checkout" (incorrect but plausible).
+  The check script needs comprehensive normalization here.
+
+- Students who've seen all previous incidents know the golden path
+  pattern by now and may rush through without reading carefully. The
+  most common mistake will be reporting "cartservice; Redis; add to
+  cart" when the accepted answer may be "cartservice; Valkey; add to
+  cart" — a difference of one word. Watch for submissions that are
+  95% correct and ensure the check script gives targeted error messages
+  (e.g., "check the backing store name").
+
+- The infrastructure check (K8s Cluster Explorer) mentioned in the
+  golden path is a natural place students might go — but since this is
+  a feature flag simulation, the actual Valkey pod will appear healthy.
+  Students who go to K8s first will find nothing wrong there and may
+  be confused. Game managers should know this in advance.
+
+- End-of-day logistics: after Incident 5, teams move into debrief. Game
+  managers should have a clear plan for transitioning from the final
+  golden path to the wrap-up session without dead time.
+=============================================================================
+-->

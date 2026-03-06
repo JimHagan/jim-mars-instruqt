@@ -3,13 +3,13 @@ set -euo pipefail
 
 # Expected answers (lowercase for case-insensitive comparison)
 EXPECTED_SERVICE="imageprovider"
-EXPECTED_ISSUE_TYPE="high latency"
-EXPECTED_ROOT_CAUSE="image slow load"
+DELAY_MIN=4
+DELAY_MAX=6
+EXPECTED_WEB_VITAL="lcp"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("image provider" "image-provider" "imageservice" "image service")
-ALT_ISSUE_ANSWERS=("latency" "slow response" "slow performance" "performance degradation" "high response time")
-ALT_ROOT_CAUSE_ANSWERS=("imageslowload" "slow image loading" "artificial latency" "image latency" "slow images" "feature flag")
+ALT_SERVICE_ANSWERS=("images" "image" "image provider" "image-provider" "imageservice" "image service")
+ALT_WEB_VITAL_ANSWERS=("lcp" "largest contentful paint" "lcp score" "largest contentful paint (lcp)" "page load")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {
@@ -42,6 +42,39 @@ check_answer() {
     return 1
 }
 
+# Check if a delay answer falls within the acceptable range (4–6 seconds).
+# Accepts: plain integers (5), decimals (4.9), ms values (5000ms, 4800ms),
+# and unit suffixes (5s, 5 sec, 5 seconds, ~5).
+check_delay_range() {
+    local raw
+    raw=$(echo "$1" | tr '[:upper:]' '[:lower:]' | xargs)
+
+    # Strip leading ~ (approximate symbol)
+    raw="${raw#\~}"
+
+    # Extract the leading numeric value (integer or decimal)
+    local num
+    num=$(echo "$raw" | grep -oE '^[0-9]+(\.[0-9]+)?')
+
+    if [[ -z "$num" ]]; then
+        return 1
+    fi
+
+    # Convert milliseconds to seconds if the input looks like ms (value > 100)
+    local seconds
+    if echo "$raw" | grep -qE 'ms|millisec'; then
+        seconds=$(echo "$num / 1000" | bc -l)
+    else
+        seconds="$num"
+    fi
+
+    # Compare as integers using rounding (floor via bc)
+    local rounded
+    rounded=$(echo "$seconds / 1" | bc)
+
+    (( rounded >= DELAY_MIN && rounded <= DELAY_MAX ))
+}
+
 # Check if answer file exists
 ANSWER_FILE="/tmp/answers.json"
 if [[ ! -f "$ANSWER_FILE" ]]; then
@@ -49,7 +82,7 @@ if [[ ! -f "$ANSWER_FILE" ]]; then
     exit 1
 fi
 
-# Read answer from JSON file (format: {"answer": "service; issue; cause"})
+# Read answer from JSON file (format: {"answer": "part1; part2; part3"})
 FULL_ANSWER=$(jq -r '.answer // empty' "$ANSWER_FILE")
 
 # Check if answer is empty
@@ -63,49 +96,49 @@ IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
 
 # Check if we have exactly 3 parts
 if [[ ${#ANSWERS[@]} -ne 3 ]]; then
-    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: service; issue type; root cause"
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: slow service; delay in seconds; degraded core web vital"
     exit 1
 fi
 
 # Extract and trim each answer
 SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
-ISSUE_TYPE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
-ROOT_CAUSE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+DELAY_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
+WEB_VITAL_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
 
 # Check if any part is empty
-if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]] || [[ -z "$ROOT_CAUSE_ANSWER" ]]; then
-    fail-message "❌ All three parts must be filled. Format: service; issue type; root cause"
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$DELAY_ANSWER" ]] || [[ -z "$WEB_VITAL_ANSWER" ]]; then
+    fail-message "❌ All three parts must be filled. Format: slow service; delay in seconds; degraded core web vital"
     exit 1
 fi
 
 # Validate each answer
 SERVICE_CORRECT=false
-ISSUE_TYPE_CORRECT=false
-ROOT_CAUSE_CORRECT=false
+DELAY_CORRECT=false
+WEB_VITAL_CORRECT=false
 
 if check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}"; then
     SERVICE_CORRECT=true
 fi
 
-if check_answer "$ISSUE_TYPE_ANSWER" "$EXPECTED_ISSUE_TYPE" "${ALT_ISSUE_ANSWERS[@]}"; then
-    ISSUE_TYPE_CORRECT=true
+if check_delay_range "$DELAY_ANSWER"; then
+    DELAY_CORRECT=true
 fi
 
-if check_answer "$ROOT_CAUSE_ANSWER" "$EXPECTED_ROOT_CAUSE" "${ALT_ROOT_CAUSE_ANSWERS[@]}"; then
-    ROOT_CAUSE_CORRECT=true
+if check_answer "$WEB_VITAL_ANSWER" "$EXPECTED_WEB_VITAL" "${ALT_WEB_VITAL_ANSWERS[@]}"; then
+    WEB_VITAL_CORRECT=true
 fi
 
 # Final result
-if $SERVICE_CORRECT && $ISSUE_TYPE_CORRECT && $ROOT_CAUSE_CORRECT; then
+if $SERVICE_CORRECT && $DELAY_CORRECT && $WEB_VITAL_CORRECT; then
     echo "✅ All answers correct! Incident resolved."
-    echo "🎯 Root cause: $SERVICE_ANSWER experiencing $ISSUE_TYPE_ANSWER due to $ROOT_CAUSE_ANSWER"
+    echo "🎯 $SERVICE_ANSWER is injecting a ${DELAY_ANSWER}s delay per image request, degrading $WEB_VITAL_ANSWER"
     exit 0
 else
     CORRECT_COUNT=0
     $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $ISSUE_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $ROOT_CAUSE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $DELAY_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $WEB_VITAL_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
 
-    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again."
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again. Format: slow service; delay in seconds; degraded core web vital (delay should be a number between $DELAY_MIN–$DELAY_MAX)"
     exit 1
 fi

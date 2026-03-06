@@ -34,9 +34,9 @@ This is a complete revenue stop.
 
 Use New Relic to investigate and identify:
 
-1. **Which service** is the source of the errors?
-2. **What type of issue** is affecting it?
-3. **What is the root cause** of the problem?
+1. **Which service** is the source of the checkout errors?
+2. **Which downstream dependency** is unreachable?
+3. **What error type** appears in the traces?
 
 ## 🔍 Investigation Guide
 
@@ -64,7 +64,7 @@ Start broad, then narrow down.  As always check your configured workloads to get
 
 ### Step 5: Try to Reproduce
 Open the **Astronomy Shop** tab and browse the product catalog.
-Try clicking on **"Roof Binoculars"** — what happens?
+Browse the product catalog, add some items to your cart, and try to check out — what happens?
 
 
 
@@ -72,16 +72,18 @@ Try clicking on **"Roof Binoculars"** — what happens?
 
 Once you've identified the root cause, go to the **Check** terminal and enter your answers:
 
+**Answer Format:**
+
 ```
-service name; issue type; root cause
+failing service; unreachable dependency; error type
 ```
 
-**Example:** `search-service; high error rate; database connection timeout`
+**Example:** `cartservice; emailservice; service unavailable`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
-- Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `database connection timeout`)
+- Failing service: the service where errors are observed in APM (e.g., `cartservice`)
+- Unreachable dependency: which downstream service can't be reached? (look in error messages or traces)
+- Exception name: Paste in the exception name from the error messages or traces (e.g., `service unavailable`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 
@@ -90,3 +92,35 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
+
+<!--
+=============================================================================
+BETA TESTING REVIEW NOTES — Incident 2 Failure Path
+=============================================================================
+
+## Gotchas to Watch in Beta Testing
+
+- The key insight (paymentservice has ZERO throughput during the incident)
+  is counterintuitive. Most students will look FOR errors on paymentservice
+  APM, find nothing, and conclude "payment service is fine." Watch for
+  teams who get stuck at this point — game manager hint: "Check the
+  throughput chart on paymentservice, not just the error rate."
+
+- The error message variants can be: "connection refused", "no such host",
+  "dial tcp: lookup paymentservice-invalid", "UNAVAILABLE desc = connection
+  error." The check script must handle all of these. Observe what students
+  actually see in the lab environment and ensure those exact strings are
+  accepted.
+
+- Groups fresh from Incident 1 will immediately go to Errors Inbox. There
+  will be errors there (on checkoutservice), but the root cause is a
+  connectivity issue, not an application error. Watch for teams who stop
+  at Errors Inbox without following the trace to understand WHY checkout
+  is failing.
+
+- The gRPC error on checkoutservice spans may display differently across
+  different New Relic UI versions. Validate that the span attribute
+  `rpc.service: oteldemo.PaymentService` is visible in the lab's OTel
+  traces before the beta.
+=============================================================================
+-->

@@ -18,7 +18,7 @@ The `paymentFailure` feature flag was enabled, causing the **Payment service** t
 
 ## Error Rate Chart
 
-![Payment Failure Error Rate](../assets/random-payment-failure-chart.png)]
+![Payment Failure Error Rate](../assets/random-payment-failure-chart.png)
 
 ---
 
@@ -141,3 +141,18 @@ SINCE 30 minutes ago
 - **Errors Inbox turns noise into signal.** Instead of reading 1,000 individual traces, Errors Inbox groups them and shows you trend, frequency, and the exact error message immediately.
 - **Trace comparison unlocks insights.** Putting a failing trace next to a successful trace visually highlights exactly what differs — the most efficient way to find correlations.
 - **NRQL for deeper analysis.** When simple trace inspection isn't enough, querying span attributes with NRQL lets you statistically test hypotheses (e.g., "does failure correlate with amount?") at scale.
+
+<!--
+BETA NOTES — Incident 4 Golden Path
+
+Improvements:
+- Verify asset renders: random-payment-failure-chart.png
+- "~20–30%" error rate here should align to whatever value the failure path check script accepts — pick one number and use it consistently
+- NRQL Step 5 is the most advanced moment in the track; frame it as optional/bonus for less technical teams
+- Consider prompting teams to actually run the NRQL query rather than just reading it
+
+Gameday gotchas:
+- Validate NRQL attribute name (`otel.status_code` vs `span.status_code`) and value case in the live environment — a broken query is a credibility hit
+- Verify `app.payment.amount` is actually emitted in OTel spans; if missing, Step 5's correlation analysis collapses
+- Students who answered "20%" on the failure path may be confused by "~20–30%" here — alignment matters
+-->

@@ -109,3 +109,18 @@ In a real-world scenario, the backing store pod being unhealthy would be visible
 - **Read the error message.** "Connection refused", "backing store unavailable", "transport error" — these are infrastructure signals, not application bugs.
 - **Distributed tracing shows dependency depth.** The trace waterfall reveals which layer actually failed — the cart service logic vs. the Redis call vs. the network.
 - **Cross-signal correlation.** APM errors + K8s pod health together paint the full picture of what failed and why.
+
+<!--
+BETA NOTES — Incident 5 Golden Path
+
+Improvements:
+- Step 5 "Infrastructure Check" is misleading — the Valkey pod is healthy because this is a feature flag simulation; add: "In this simulation the pod will appear healthy — in a real incident you'd see pod failures here"
+- Verify which error message actually appears in the lab ("rpc error: code = Unavailable" vs "Cart service failure simulated by feature flag") and remove the other
+- Add a "What's Next" transition note pointing teams toward the debrief so the ending feels intentional
+- Confirm Instruqt gates golden paths behind failure check completion (cartFailure flag name is a spoiler)
+
+Gameday gotchas:
+- Students who follow the K8s check step find a healthy pod and are confused; game managers need to know this ahead of time
+- Demoralized teams from repeated wrong submissions need active encouragement — "hints are part of the process"
+- Have 3–5 structured retrospective questions ready so game managers aren't improvising the debrief wrap-up
+-->

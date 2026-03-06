@@ -118,3 +118,18 @@ The error message tells you exactly: the checkout service is trying to connect t
 - **Zero throughput is a clue.** If downstream service metrics show no traffic during an outage, it's a connectivity problem — the requests never arrived.
 - **Error messages in spans are your evidence.** "Connection refused" or "no such host" in span attributes immediately tells you it's a network/DNS issue, not a logic bug.
 - **Distributed tracing maps service dependencies.** Without it, you'd have to guess which service is calling which. With it, the callgraph is right there in the waterfall.
+
+<!--
+BETA NOTES — Incident 2 Golden Path
+
+Improvements:
+- Verify assets render: payment-service-unreachable-alerts.png, payment-service-unreachable-error-rate.png
+- "chargeService" in the trace waterfall is a span/method name, not an APM service — add a clarifying note so students don't hunt for it
+- Validate error message "no such host: paymentservice-invalid" matches what the lab actually produces
+- Consider a "Common Wrong Turns" callout: don't look for errors on paymentservice — it has zero traffic
+
+Gameday gotchas:
+- Empty paymentservice throughput chart is often mistaken for a UI loading issue; game managers should be ready to explain "zero traffic IS the finding"
+- Step 2 alert is optional — if Terraform had issues during setup, alerts may not be configured
+- Verify the checkout page UI error message ("Order failed" / "Payment processing error") matches what the shop actually shows
+-->

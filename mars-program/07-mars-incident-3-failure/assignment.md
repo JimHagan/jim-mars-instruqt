@@ -33,9 +33,9 @@ Pages are loading but something is visibly wrong — the customer experience is 
 
 Use New Relic to investigate and identify:
 
-1. **Which service** is causing the slowness?
-2. **What type of issue** is affecting it?
-3. **What is the root cause** of the problem?
+1. **Which service** is responsible for the slowness?
+2. **How many seconds** is each image request delayed? (check span duration in traces)
+3. **Which Core Web Vital** is degraded in Browser monitoring?
 
 ## 🔍 Investigation Guide
 
@@ -51,7 +51,7 @@ Click on any product. What do you notice?
 ### Step 2: Check Browser Monitoring
 This incident affects the **user-facing experience**, so start with **Browser** monitoring:
 1. In New Relic, go to **Browser** and find the Astronomy Shop browser app
-2. Look at **Core Web Vitals** — is **LCP (Largest Contentful Paint)** elevated?
+2. Look at **Core Web Vitals** — are any of the scores elevated or degraded?
 3. Check the **AJAX** tab for slow requests — do you see slow calls for image loading?
 
 ### Step 3: Investigate with APM
@@ -62,29 +62,31 @@ This incident affects the **user-facing experience**, so start with **Browser** 
 ### Step 4: Dig into Traces
 In APM, go to **Distributed Tracing** for the slow service:
 1. Open a slow trace for an image-loading request
-2. Look at the span duration — how long does a single image request take?
+2. Look at the span duration — **note the exact number of seconds** each request takes
 3. Check the span **attributes** — is there anything that suggests artificial delay?
 
 ### Step 5: Identify the Root Cause
 Based on your investigation:
 - Which service is consistently slow?
-- Is there a pattern? (All requests? Only for images? Only for certain paths?)
-- What could cause a service to be artificially slow on every request?
+- How many seconds does each image request take? (this is your delay value)
+- Which Core Web Vital in Browser monitoring is most impacted by slow image loads?
 
 ## 📝 Submit Your Answers
 
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
+**Answer Format:**
+
 ```
-service name; issue type; root cause
+slow service; delay in seconds; degraded core web vital
 ```
 
-**Example:** `search-service; high error rate; database connection timeout`
+**Example:** `recommendationservice; 3; CLS`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
-- Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `database connection timeout`)
+- Slow service: use the exact name as it appears in New Relic (e.g., `recommendationservice`)
+- Delay in seconds: how long does each image request take? (from span duration in traces — enter a whole number, e.g. `3`)
+- Degraded core web vital: which Browser Core Web Vital is impacted? (e.g., `CLS`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 
@@ -93,3 +95,34 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 - You have **30 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
+
+<!--
+
+## Gotchas to Watch in Beta Testing
+
+- Browser monitoring data in New Relic has a ~2–5 minute ingestion delay.
+  If students check Browser Core Web Vitals immediately after the incident
+  starts, they may see normal LCP. Game managers should advise: "Give it
+  2–3 minutes for Browser data to populate, then check Core Web Vitals."
+
+- The Instruqt embedded browser tab may have inherently high latency due
+  to the proxy. Teams will struggle to distinguish 2-second artificial
+  image delay from normal Instruqt latency. Anchor the investigation in
+  APM trace span durations rather than subjective visual timing.
+
+- If the Browser app was not properly configured during track setup
+  (Terraform Terraform issues, wrong app ID, etc.), the Browser tab will
+  show no data and students will be completely blocked on Steps 2–3.
+  Game managers need a fallback path: "If Browser shows no data, go
+  directly to APM and look for imageprovider latency."
+
+- The "delay in seconds" answer must match what the check script expects.
+  If the feature flag injects exactly 2000ms and spans show 2.1–2.9s
+  due to overhead, students who answer "2" vs "3" may get different
+  results. Validate the exact span durations in the lab before beta.
+
+- Students unfamiliar with Core Web Vitals may Google what LCP is and
+  realize it's related to images — effectively reading the answer. This
+  is fine educationally but worth knowing.
+=============================================================================
+-->

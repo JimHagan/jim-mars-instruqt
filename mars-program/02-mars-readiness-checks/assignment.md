@@ -14,7 +14,7 @@ enhanced_loading: null
 
 Well done in setting up your Workload, this will be a memorable Game Day!
 
-Feel free to check the entities in your workload, perhaps group by `Entity Type`, and in general explore the setup to get familiar with it. 
+Feel free to check the entities in your workload, perhaps group by `Entity Type`, and in general explore the setup to get familiar with it.
 
 ## 🛑 Wait Before Continuing
 

@@ -3,10 +3,10 @@ virtualmachines:
 - name: k8s
   image: instruqt/k3s-v1-33-4
   environment:
+    INSTRUCTOR_EMAIL_DOMAIN: newrelic.com
+    INSTRUCTOR_EMAIL_HANDLE: dgomezblanco
     IS_OPENSHIFT_CLUSTER: "n"
     NR_SUBACCOUNT_NAME_PREFIX: 'MARS - '
-    INSTRUCTOR_EMAIL_HANDLE: dgomezblanco
-    INSTRUCTOR_EMAIL_DOMAIN: newrelic.com
     TF_AUTO_APPROVE: "true"
     TF_VAR_admin_group_name: Admin
     TF_VAR_app_name: frontend

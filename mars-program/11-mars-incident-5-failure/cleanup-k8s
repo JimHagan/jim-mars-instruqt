@@ -1,0 +1,35 @@
+#!/bin/bash
+set -uo pipefail  # No -e flag, script continues on errors
+
+echo "=== Cleaning up Incident 1 ==="
+
+# Clean up answer file
+rm -f /tmp/answers.json
+
+# Disable the productCatalogFailure feature flag by updating the ConfigMap
+echo "Disabling productCatalogFailure feature flag..."
+
+# Get the flagd ConfigMap
+CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+
+if [ -n "$CONFIGMAP_NAME" ]; then
+  echo "Found ConfigMap: $CONFIGMAP_NAME"
+
+  # Update the ConfigMap to disable the flag (set defaultVariant to "off" and state to "DISABLED")
+  kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
+    jq '.data["demo.flagd.json"] | fromjson | .flags.productCatalogFailure.defaultVariant = "off" | .flags.productCatalogFailure.state = "DISABLED" | tojson' | \
+    kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+
+  # Restart flagd pod to apply changes
+  echo "Restarting flagd pod to apply changes..."
+  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+
+  echo "✅ Feature flag disabled"
+else
+  echo "Warning: Could not find flagd ConfigMap, skipping flag cleanup"
+fi
+
+# Clean up answer file and prompt script
+rm -f /tmp/incident1_answers.json
+
+echo "✅ Cleanup complete"

@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
+# Expected answers: affected service; affected product ID; root cause
 EXPECTED_SERVICE="productcatalogservice"
-EXPECTED_ISSUE_TYPE="high error rate"
+EXPECTED_ISSUE_TYPE="OLJCESPC7Z"
 EXPECTED_ROOT_CAUSE="product catalog failure"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("product catalog service" "product-catalog-service" "productcatalog")
-ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "error spike" "service errors")
-ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag" "productcatalogfailure" "specific product failing" "oljcespc7z")
+ALT_ISSUE_ANSWERS=("oljcespc7z" "roof binoculars" "binoculars" "oljcespc7z product")
+ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag" "productcatalogfailure")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

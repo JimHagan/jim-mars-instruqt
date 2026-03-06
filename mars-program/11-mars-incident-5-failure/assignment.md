@@ -72,15 +72,15 @@ If you have access to Kubernetes metrics:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; failing operation; failed dependency
 ```
 
-**Example:** `cartservice; high error rate; cart failure`
+**Example:** `cartservice; AddItem; redis`
 
 **Format hints:**
-- Service name: which service is failing? (e.g., `cartservice`)
-- Issue type: what kind of problem? (e.g., `high error rate`)
-- Root cause: what is causing the failure? (e.g., `cart failure`)
+- Affected service: which service is erroring?
+- Failing operation: what specific cart operation is failing? (check APM transactions or Distributed Tracing span names — e.g., `AddItem`, `GetCart`)
+- Failed dependency: what backing store or external dependency is the cart service failing to reach? (check the error message on the failing span)
 
 Click **Check** to validate. You can re-enter if incorrect.
 

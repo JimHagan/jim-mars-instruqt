@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# Expected answers: affected service; saturated resource; Kubernetes effect
 EXPECTED_SERVICE="adservice"
-EXPECTED_ISSUE_TYPE="high cpu"
-EXPECTED_ROOT_CAUSE="ad service high cpu"
+EXPECTED_ISSUE_TYPE="CPU"
+EXPECTED_ROOT_CAUSE="throttled"
 
 ALT_SERVICE_ANSWERS=("ad service" "ad-service" "ads")
-ALT_ISSUE_ANSWERS=("cpu" "high cpu usage" "cpu saturation" "cpu exhaustion" "resource exhaustion" "cpu throttling")
-ALT_ROOT_CAUSE_ANSWERS=("adhighcpu" "high cpu load" "cpu spike" "artificial cpu load" "feature flag" "ad high cpu")
+ALT_ISSUE_ANSWERS=("cpu" "processor" "cpu usage" "high cpu")
+ALT_ROOT_CAUSE_ANSWERS=("cpu throttling" "throttling" "cpu throttled" "pod throttled" "resource throttling" "throttle")
 
 normalize() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | xargs

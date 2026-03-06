@@ -78,15 +78,15 @@ Based on your investigation:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; failing operation; failure pattern
 ```
 
-**Example:** `paymentservice; high error rate; payment failure`
+**Example:** `paymentservice; charge; intermittent`
 
 **Format hints:**
-- Service name: which service has the errors? (e.g., `paymentservice`)
-- Issue type: what kind of problem is this? (e.g., `high error rate`)
-- Root cause: what is causing the failures? (e.g., `payment failure`)
+- Affected service: which service is generating errors?
+- Failing operation: what is the name of the specific operation or span that fails? (check Distributed Tracing — look at the span name on the failing traces)
+- Failure pattern: how would you describe the failure behavior? Is it every request, or something else?
 
 Click **Check** to validate. You can re-enter if incorrect.
 

@@ -76,15 +76,15 @@ Based on your investigation:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected system; problematic Kafka metric; root cause
 ```
 
 **Example:** `kafka; consumer lag; kafka queue problems`
 
 **Format hints:**
-- Service name: what system is affected? (e.g., `kafka` or `accountingservice`)
-- Issue type: what kind of problem? (e.g., `consumer lag`)
-- Root cause: what is causing it? (e.g., `kafka queue problems`)
+- Affected system: what messaging system is experiencing problems?
+- Problematic Kafka metric: which specific Kafka metric is growing and indicates the system is falling behind? (query it in NRQL or check Kafka dashboards)
+- Root cause: what is causing this metric to grow?
 
 Click **Check** to validate. You can re-enter if incorrect.
 

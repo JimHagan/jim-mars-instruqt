@@ -72,15 +72,15 @@ Based on your investigation:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; growing resource metric; root cause
 ```
 
-**Example:** `recommendationservice; memory leak; recommendation cache failure`
+**Example:** `recommendationservice; memory; recommendation cache failure`
 
 **Format hints:**
-- Service name: which service? (e.g., `recommendationservice`)
-- Issue type: what kind of problem? (e.g., `memory leak`)
-- Root cause: what is causing it? (e.g., `recommendation cache failure`)
+- Affected service: which service has the resource problem?
+- Growing resource metric: which specific infrastructure metric is continuously increasing? (check Infrastructure or Kubernetes pod metrics — one word)
+- Root cause: what is causing that metric to grow without bound?
 
 Click **Check** to validate. You can re-enter if incorrect.
 

@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
+# Expected answers: affected service; failing cart operation; failed backing store
 EXPECTED_SERVICE="cartservice"
-EXPECTED_ISSUE_TYPE="high error rate"
-EXPECTED_ROOT_CAUSE="cart failure"
+EXPECTED_ISSUE_TYPE="AddItem"
+EXPECTED_ROOT_CAUSE="redis"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cart")
-ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "service errors" "error spike")
-ALT_ROOT_CAUSE_ANSWERS=("cartfailure" "cart service failure" "redis failure" "valkey failure" "backing store failure" "database failure" "feature flag")
+ALT_ISSUE_ANSWERS=("additem" "add item" "getcart" "get cart" "emptycart" "empty cart" "add to cart")
+ALT_ROOT_CAUSE_ANSWERS=("valkey" "backing store" "cache" "data store" "cartstore" "redis db" "cart store")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

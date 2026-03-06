@@ -79,15 +79,15 @@ Based on what you find in the trace:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+service with the error; unreachable downstream service; error message type
 ```
 
-**Example:** `checkoutservice; high error rate; payment service unreachable`
+**Example:** `checkoutservice; paymentservice; connection refused`
 
 **Format hints:**
-- Service name: the service where the error originates (e.g., `checkoutservice`)
-- Issue type: what kind of problem is this? (e.g., `high error rate`)
-- Root cause: what is causing the failure? (e.g., `payment service unreachable`)
+- Service with the error: which service's span shows the error in Distributed Tracing? (hint: it's the *caller*, not the one that's down)
+- Unreachable downstream service: which service is it failing to reach?
+- Error message type: what does the error say? (look at the span attribute `error.message` or `otel.status_description`)
 
 Click **Check** to validate. You can re-enter if incorrect.
 

@@ -72,15 +72,15 @@ Use New Relic to investigate and identify:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; saturated resource; Kubernetes effect
 ```
 
-**Example:** `adservice; high cpu; ad service high cpu`
+**Example:** `adservice; CPU; throttled`
 
 **Format hints:**
-- Service name: which service? (e.g., `adservice`)
-- Issue type: what kind of problem? (e.g., `high cpu`)
-- Root cause: what is causing it? (e.g., `ad service high cpu`)
+- Affected service: which service has the resource issue?
+- Saturated resource: which resource is maxed out? (check Infrastructure pod metrics — one word)
+- Kubernetes effect: what does Kubernetes do to this pod as a result? (check the Kubernetes Cluster Explorer — look at the CPU throttling percentage)
 
 Click **Check** to validate. You can re-enter if incorrect.
 

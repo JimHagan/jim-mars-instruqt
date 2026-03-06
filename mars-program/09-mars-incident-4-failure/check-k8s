@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
+# Expected answers: affected service; failing operation; failure pattern
 EXPECTED_SERVICE="paymentservice"
-EXPECTED_ISSUE_TYPE="high error rate"
-EXPECTED_ROOT_CAUSE="payment failure"
+EXPECTED_ISSUE_TYPE="charge"
+EXPECTED_ROOT_CAUSE="intermittent"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("payment service" "payment-service" "payment")
-ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "intermittent errors" "intermittent failures" "error spike")
-ALT_ROOT_CAUSE_ANSWERS=("paymentfailure" "charge failure" "payment charges failing" "intermittent payment failure" "payment service failure" "random payment failure" "feature flag")
+ALT_ISSUE_ANSWERS=("chargerequest" "charge request" "payment charge" "chargeservice")
+ALT_ROOT_CAUSE_ANSWERS=("random" "intermittent failures" "partial failures" "random failures" "intermittent errors" "intermittent payment" "random payment failure")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

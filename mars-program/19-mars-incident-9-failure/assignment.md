@@ -80,15 +80,15 @@ Go back to **APM → cartservice**:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; pod status; Kubernetes signal
 ```
 
-**Example:** `cartservice; readiness probe failure; failed readiness probe`
+**Example:** `cartservice; NotReady; readiness probe failure`
 
 **Format hints:**
-- Service name: which service? (e.g., `cartservice`)
-- Issue type: what kind of problem? (e.g., `readiness probe failure`)
-- Root cause: what is causing it? (e.g., `failed readiness probe`)
+- Affected service: which service's pod is having issues?
+- Pod status: what status does Kubernetes show for the pod? (check the Kubernetes Cluster Explorer — look at the pod status indicator)
+- Kubernetes signal: what type of Kubernetes health check is failing? (check the pod Events tab in the Cluster Explorer)
 
 Click **Check** to validate. You can re-enter if incorrect.
 

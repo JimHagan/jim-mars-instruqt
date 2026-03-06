@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# Expected answers: affected system; problematic Kafka metric; root cause
 EXPECTED_SERVICE="kafka"
 EXPECTED_ISSUE_TYPE="consumer lag"
 EXPECTED_ROOT_CAUSE="kafka queue problems"
 
-ALT_SERVICE_ANSWERS=("accountingservice" "accounting service" "accounting" "frauddetectionservice" "fraud detection" "kafka queue")
-ALT_ISSUE_ANSWERS=("queue lag" "message lag" "consumer lag" "queue backup" "message backlog" "queue overload" "kafka lag")
-ALT_ROOT_CAUSE_ANSWERS=("kafkaqueueproblems" "kafka overload" "kafka queue overload" "queue overflow" "message queue problems" "feature flag")
+ALT_SERVICE_ANSWERS=("accountingservice" "accounting service" "accounting" "frauddetectionservice" "fraud detection" "message queue")
+ALT_ISSUE_ANSWERS=("queue lag" "message lag" "kafka lag" "lag" "consumer backlog" "queue backlog")
+ALT_ROOT_CAUSE_ANSWERS=("kafkaqueueproblems" "kafka overload" "producer overload" "message flood" "queue overflow" "10x message rate" "feature flag")
 
 normalize() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | xargs

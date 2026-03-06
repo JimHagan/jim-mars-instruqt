@@ -65,18 +65,18 @@ In the failing trace, look for:
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter your answers:
+Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+affected service; affected product ID; root cause
 ```
 
-**Example:** `checkoutservice; high error rate; database connection timeout`
+**Example:** `productcatalogservice; OLJCESPC7Z; product catalog failure`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `productcatalogservice`)
-- Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `product catalog failure`)
+- Affected service: which service is generating errors in New Relic APM?
+- Affected product ID: which specific product ID is failing? (look in Error Inbox or trace span attributes — it's a code, not a name)
+- Root cause: what is causing the failures?
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 

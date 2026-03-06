@@ -1,14 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
+# Expected answers: slow service; degraded Core Web Vital; root cause
 EXPECTED_SERVICE="imageprovider"
-EXPECTED_ISSUE_TYPE="high latency"
+EXPECTED_ISSUE_TYPE="LCP"
 EXPECTED_ROOT_CAUSE="image slow load"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("image provider" "image-provider" "imageservice" "image service")
-ALT_ISSUE_ANSWERS=("latency" "slow response" "slow performance" "performance degradation" "high response time")
+ALT_ISSUE_ANSWERS=("lcp" "largest contentful paint" "core web vital" "largest contentful")
 ALT_ROOT_CAUSE_ANSWERS=("imageslowload" "slow image loading" "artificial latency" "image latency" "slow images" "feature flag")
 
 # Normalize string: lowercase, trim whitespace

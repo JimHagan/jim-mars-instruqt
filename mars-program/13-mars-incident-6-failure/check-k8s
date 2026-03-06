@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
+# Expected answers: affected service; growing resource metric; root cause
 EXPECTED_SERVICE="recommendationservice"
-EXPECTED_ISSUE_TYPE="memory leak"
+EXPECTED_ISSUE_TYPE="memory"
 EXPECTED_ROOT_CAUSE="recommendation cache failure"
 
 ALT_SERVICE_ANSWERS=("recommendation service" "recommendation-service" "recommendations")
-ALT_ISSUE_ANSWERS=("memory" "high memory" "memory exhaustion" "memory growth" "oom" "out of memory" "resource exhaustion")
+ALT_ISSUE_ANSWERS=("heap" "memory usage" "ram" "memory consumption" "memory leak" "high memory")
 ALT_ROOT_CAUSE_ANSWERS=("recommendationcachefailure" "cache memory leak" "unbounded cache" "cache leak" "growing cache" "feature flag")
 
 normalize() {

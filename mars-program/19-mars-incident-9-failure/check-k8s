@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+# Expected answers: affected service; pod status; Kubernetes signal
 EXPECTED_SERVICE="cartservice"
-EXPECTED_ISSUE_TYPE="readiness probe failure"
-EXPECTED_ROOT_CAUSE="failed readiness probe"
+EXPECTED_ISSUE_TYPE="NotReady"
+EXPECTED_ROOT_CAUSE="readiness probe failure"
 
 ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cart")
-ALT_ISSUE_ANSWERS=("probe failure" "readiness failure" "pod not ready" "k8s probe failure" "kubernetes probe failure" "readiness probe")
-ALT_ROOT_CAUSE_ANSWERS=("failedreadinessprobe" "readiness probe failing" "pod readiness failure" "kubernetes readiness probe" "feature flag" "pod not ready")
+ALT_ISSUE_ANSWERS=("not ready" "notready" "pod not ready")
+ALT_ROOT_CAUSE_ANSWERS=("readiness probe" "probe failure" "failed readiness probe" "failedreadinessprobe" "kubernetes probe failure")
 
 normalize() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | xargs

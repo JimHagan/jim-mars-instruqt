@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
+# Expected answers: service with the error; unreachable downstream service; error message type
 EXPECTED_SERVICE="checkoutservice"
-EXPECTED_ISSUE_TYPE="high error rate"
-EXPECTED_ROOT_CAUSE="payment service unreachable"
+EXPECTED_ISSUE_TYPE="paymentservice"
+EXPECTED_ROOT_CAUSE="connection refused"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("checkout service" "checkout-service" "checkout")
-ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "connection failure" "network error" "service unavailable")
-ALT_ROOT_CAUSE_ANSWERS=("payment unreachable" "payment service unavailable" "payment not reachable" "paymentunreachable" "connection refused" "bad payment address" "payment down")
+ALT_ISSUE_ANSWERS=("payment service" "payment" "payment-service")
+ALT_ROOT_CAUSE_ANSWERS=("connection error" "host not found" "no such host" "network error" "unreachable" "connection failure" "dial error")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

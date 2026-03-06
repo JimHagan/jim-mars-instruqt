@@ -75,15 +75,15 @@ Based on your investigation:
 Once you've identified the root cause, go to the **Check** terminal and enter:
 
 ```
-service name; issue type; root cause
+slow service; degraded Core Web Vital; root cause
 ```
 
-**Example:** `imageprovider; high latency; image slow load`
+**Example:** `imageprovider; LCP; image slow load`
 
 **Format hints:**
-- Service name: which service is responsible? (e.g., `imageprovider`)
-- Issue type: what kind of problem is this? (e.g., `high latency`)
-- Root cause: what is causing the slowness? (e.g., `image slow load`)
+- Slow service: which backend service shows elevated response time in APM?
+- Degraded Core Web Vital: which Browser performance metric is most impacted? (go to Browser → Core Web Vitals — use the abbreviation)
+- Root cause: what is causing the slowness?
 
 Click **Check** to validate. You can re-enter if incorrect.
 

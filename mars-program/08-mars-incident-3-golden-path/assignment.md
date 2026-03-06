@@ -18,7 +18,7 @@ The `imageSlowLoad` feature flag was enabled, injecting artificial latency into 
 
 ## Homepage View
 
-![ImageSlowLoadHomePage](image-slow-load-homepage.png)
+![ImageSlowLoadHomePage](../assets/image-slow-load-homepage.png)
 
 ---
 

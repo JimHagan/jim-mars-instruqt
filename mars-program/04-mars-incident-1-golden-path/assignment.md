@@ -18,11 +18,11 @@ The `productCatalogFailure` feature flag was enabled, causing the **Product Cata
 
 ## Alerts For This Incident
 
-![Product Catalog Failure Alerts](product-catalog-failure-alerts.png)
+![Product Catalog Failure Alerts](../assets/product-catalog-failure-alerts.png)
 
 
 ## Errors Inbox View
-![Product Catalog Failure Inbox](product-catalog-failure-errors-inbox.png)
+![Product Catalog Failure Inbox](../assets/product-catalog-failure-errors-inbox.png)
 ---
 
 ## The Ideal Debugging Path

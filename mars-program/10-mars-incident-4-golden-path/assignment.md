@@ -18,7 +18,7 @@ The `paymentFailure` feature flag was enabled, causing the **Payment service** t
 
 ## Error Rate Chart
 
-![Payment Failure Error Rate](random-payment-failure-chart.png)]
+![Payment Failure Error Rate](../assets/random-payment-failure-chart.png)]
 
 ---
 

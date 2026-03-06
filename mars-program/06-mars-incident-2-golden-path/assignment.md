@@ -18,12 +18,12 @@ The `paymentUnreachable` feature flag was enabled, causing the **Checkout servic
 
 ## Alerts For This Incident
 
-![PaymentServiceUnreachable Alerts](payment-service-unreachable-alerts.png)
+![PaymentServiceUnreachable Alerts](../assets/payment-service-unreachable-alerts.png)
 
 
 ## Error Chart For This Incident
 
-![PaymentServiceUnreachable Error Chart](payment-service-unreachable-error-rate.png)
+![PaymentServiceUnreachable Error Chart](../assets/payment-service-unreachable-error-rate.png)
 
 ---
 

@@ -10,9 +10,9 @@ owner: newrelic
 developers:
 - bschmitt@newrelic.com
 - staylor@newrelic.com
+- jhagan@newrelic.com
 - dgomezblanco@newrelic.com
 - reeselee@newrelic.com
-- jhagan@newrelic.com
 show_timer: true
 timelimit: 10800
 lab_config:
@@ -26,5 +26,5 @@ lab_config:
   hideStopButton: true
   default_layout: AssignmentLeft
   default_layout_sidebar_size: 50
-checksum: "12489685884582181783"
+checksum: "18216829328814130153"
 enhanced_loading: false

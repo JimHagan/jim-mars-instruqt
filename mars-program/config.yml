@@ -10,8 +10,8 @@ virtualmachines:
     TF_AUTO_APPROVE: "true"
     TF_VAR_admin_group_name: Admin
     TF_VAR_app_name: frontend
-    TF_VAR_newrelic_parent_account_id: "6879196"
+    TF_VAR_newrelic_parent_account_id: "5862466"
     TF_VAR_readonly_role_name: all_product_admin
   machine_type: n2-standard-4
 secrets:
-- name: MARS_PARENT_API_KEY
+- name: MARS_GAMEDAY_API_KEY

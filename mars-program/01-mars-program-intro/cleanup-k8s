@@ -14,7 +14,7 @@ echo "✅ Answer file cleaned up"
 echo "🏷️  Tagging entities with team name: $WORKLOAD_NAME"
 
 # Get credentials
-NR_API_KEY="${MARS_PARENT_API_KEY}"
+NR_API_KEY="${MARS_GAMEDAY_API_KEY}"
 NR_ACCOUNT_ID=$(cd opentelemetry-demo/newrelic/terraform/nr_account && terraform output -raw account_id 2>/dev/null)
 
 # Fetch all entities in the account

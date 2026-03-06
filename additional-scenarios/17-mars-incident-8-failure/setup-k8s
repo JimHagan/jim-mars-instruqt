@@ -1,0 +1,33 @@
+#!/bin/bash
+set -euo pipefail
+
+echo "=== Setting up Incident 8: Kafka Queue Problems ==="
+
+echo "Enabling kafkaQueueProblems feature flag via ConfigMap..."
+
+# Note: kafkaQueueProblems uses a numeric multiplier variant.
+# A 10x multiplier ("10") produces noticeable consumer lag.
+CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+
+if [ -z "$CONFIGMAP_NAME" ]; then
+  echo "ERROR: Could not find flagd ConfigMap"
+  kubectl get configmaps -n opentelemetry-demo
+  exit 1
+fi
+
+echo "Found ConfigMap: $CONFIGMAP_NAME"
+
+# Use "10" variant for 10x message load (as recommended in the scenario notes)
+kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
+  jq '.data["demo.flagd.json"] | fromjson | .flags.kafkaQueueProblems.defaultVariant = "10" | .flags.kafkaQueueProblems.state = "ENABLED" | tojson' | \
+  kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+
+echo "Restarting flagd pod to apply changes..."
+kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+
+echo "Waiting for flagd pod to be ready..."
+kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
+
+echo "✅ Incident triggered! Kafka queue is now being flooded at 10x the normal message rate."
+echo "Note: Allow 2-3 minutes for consumer lag to build up and become visible in metrics."
+echo ""

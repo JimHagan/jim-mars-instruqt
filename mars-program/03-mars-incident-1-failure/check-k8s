@@ -3,13 +3,13 @@ set -euo pipefail
 
 # Expected answers (lowercase for case-insensitive comparison)
 EXPECTED_SERVICE="productcatalogservice"
-EXPECTED_ISSUE_TYPE="high latency"
+EXPECTED_ISSUE_TYPE="high error rate"
 EXPECTED_ROOT_CAUSE="product catalog failure"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("product catalog service" "product-catalog-service" "productcatalog")
-ALT_ISSUE_ANSWERS=("latency" "slow response" "slow performance" "performance degradation")
-ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag enabled")
+ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "error spike" "service errors")
+ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag" "productcatalogfailure" "specific product failing" "oljcespc7z" "Explorascope")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

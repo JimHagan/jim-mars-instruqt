@@ -1,35 +1,29 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== Setting up Incident 1: Checkout Service Degradation ==="
+echo "=== Setting up Incident 5: Cart Service Failure ==="
 
-# Get the flagd ConfigMap and update it to enable productCatalogFailure
-echo "Enabling productCatalogFailure feature flag via ConfigMap..."
+echo "Enabling cartFailure feature flag via ConfigMap..."
 
-# Get current config from ConfigMap
 CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
 
 if [ -z "$CONFIGMAP_NAME" ]; then
   echo "ERROR: Could not find flagd ConfigMap"
-  echo "Available ConfigMaps:"
   kubectl get configmaps -n opentelemetry-demo
   exit 1
 fi
 
 echo "Found ConfigMap: $CONFIGMAP_NAME"
 
-# Get the current config, modify it, and update the ConfigMap
 kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.productCatalogFailure.defaultVariant = "on" | .flags.productCatalogFailure.state = "ENABLED" | tojson' | \
+  jq '.data["demo.flagd.json"] | fromjson | .flags.cartFailure.defaultVariant = "on" | .flags.cartFailure.state = "ENABLED" | tojson' | \
   kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
 
-# Restart flagd pod to pick up the new configuration
 echo "Restarting flagd pod to apply changes..."
 kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
 
-# Wait for new pod to be ready
 echo "Waiting for flagd pod to be ready..."
 kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
 
-echo "✅ Incident triggered!"
+echo "✅ Incident triggered! Cart service will now fail."
 echo ""

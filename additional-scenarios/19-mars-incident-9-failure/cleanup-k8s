@@ -7,20 +7,23 @@ rm -f /tmp/answers.json
 
 echo "Disabling failedReadinessProbe feature flag..."
 
-CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
+# Get the current config from the API (flagd exposed on NodePort 30400)
+CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read' 2>/dev/null || echo "")
 
-if [ -n "$CONFIGMAP_NAME" ]; then
-  echo "Found ConfigMap: $CONFIGMAP_NAME"
+if [ -n "$CURRENT_CONFIG" ]; then
+  # Update the failedReadinessProbe flag to disable it
+  UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .failedReadinessProbe.defaultVariant = "off" | .failedReadinessProbe.state = "DISABLED")}}')
 
-  kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-    jq '.data["demo.flagd.json"] | fromjson | .flags.failedReadinessProbe.defaultVariant = "off" | .flags.failedReadinessProbe.state = "DISABLED" | tojson' | \
-    kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+  # Write the updated config back via API
+  curl -s -X POST 'http://localhost:30400/api/write' \
+    -H 'Accept: */*' \
+    -H 'Content-Type: application/json' \
+    -H 'Pragma: no-cache' \
+    --data-raw "$UPDATED_CONFIG" \
+    --insecure >/dev/null 2>&1 || echo "Warning: Failed to update feature flags via API"
 
-  echo "Restarting flagd pod to apply changes..."
-  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
-
-  # Allow time for flagd to restart before the cartservice pod re-evaluates the flag
-  sleep 10
+  # Allow time for the flag change to propagate before restarting the cartservice
+  sleep 5
 
   # Force a restart of the cartservice pod to clear any NotReady state
   echo "Restarting cartservice pod to restore readiness..."
@@ -28,7 +31,7 @@ if [ -n "$CONFIGMAP_NAME" ]; then
 
   echo "✅ Feature flag disabled and cartservice pod restarted"
 else
-  echo "Warning: Could not find flagd ConfigMap, skipping flag cleanup"
+  echo "Warning: Could not retrieve flag configuration, skipping flag cleanup"
 fi
 
 echo "✅ Cleanup complete"

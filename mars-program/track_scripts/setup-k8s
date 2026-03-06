@@ -172,6 +172,11 @@ echo "Exposing frontend service on port 30080..."
 kubectl patch svc frontend-proxy -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30080,"protocol":"TCP"}]}}'
 echo "✅ Frontend is now accessible on port 30080"
 
+# --- EXPOSE FLAGD SERVICE ---
+echo "Exposing flagd service on port 30400..."
+kubectl patch svc flagd -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":4000,"targetPort":4000,"nodePort":30400,"protocol":"TCP","name":"api"}]}}'
+echo "✅ Flagd API is now accessible on port 30400"
+
 # --- PROMPT SCRIPT SETUP (TODO: bake this script into a custom image) ---
 # Create ONE generic prompt script that works for ALL challenges
 echo "Setting up generic prompt script to accept answers..."

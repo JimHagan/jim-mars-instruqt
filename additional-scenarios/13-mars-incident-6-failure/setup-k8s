@@ -3,27 +3,31 @@ set -euo pipefail
 
 echo "=== Setting up Incident 6: Recommendation Cache Memory Leak ==="
 
-echo "Enabling recommendationCacheFailure feature flag via ConfigMap..."
+echo "Retrieving current feature flag configuration from API..."
 
-CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+# Get the current config from the API (flagd exposed on NodePort 30400)
+CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read')
 
-if [ -z "$CONFIGMAP_NAME" ]; then
-  echo "ERROR: Could not find flagd ConfigMap"
-  kubectl get configmaps -n opentelemetry-demo
+if [ -z "$CURRENT_CONFIG" ]; then
+  echo "ERROR: Failed to retrieve current feature flags"
   exit 1
 fi
 
-echo "Found ConfigMap: $CONFIGMAP_NAME"
+echo "Enabling recommendationCacheFailure feature flag via API..."
 
-kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.recommendationCacheFailure.defaultVariant = "on" | .flags.recommendationCacheFailure.state = "ENABLED" | tojson' | \
-  kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+# Update the recommendationCacheFailure flag in the config
+UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .recommendationCacheFailure.defaultVariant = "on" | .recommendationCacheFailure.state = "ENABLED")}}')
 
-echo "Restarting flagd pod to apply changes..."
-kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
-
-echo "Waiting for flagd pod to be ready..."
-kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
+# Write the updated config back via API
+curl -f -X POST 'http://localhost:30400/api/write' \
+  -H 'Accept: */*' \
+  -H 'Content-Type: application/json' \
+  -H 'Pragma: no-cache' \
+  --data-raw "$UPDATED_CONFIG" \
+  --insecure || {
+    echo "ERROR: Failed to update feature flags via API"
+    exit 1
+  }
 
 echo "✅ Incident triggered! Recommendation service cache memory leak is now active."
 echo "Note: Memory growth is gradual — allow a few minutes for it to become visible in metrics."

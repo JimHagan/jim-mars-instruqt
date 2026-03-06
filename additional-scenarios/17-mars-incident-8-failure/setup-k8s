@@ -3,31 +3,32 @@ set -euo pipefail
 
 echo "=== Setting up Incident 8: Kafka Queue Problems ==="
 
-echo "Enabling kafkaQueueProblems feature flag via ConfigMap..."
+echo "Retrieving current feature flag configuration from API..."
 
-# Note: kafkaQueueProblems uses a numeric multiplier variant.
-# A 10x multiplier ("10") produces noticeable consumer lag.
-CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+# Get the current config from the API (flagd exposed on NodePort 30400)
+CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read')
 
-if [ -z "$CONFIGMAP_NAME" ]; then
-  echo "ERROR: Could not find flagd ConfigMap"
-  kubectl get configmaps -n opentelemetry-demo
+if [ -z "$CURRENT_CONFIG" ]; then
+  echo "ERROR: Failed to retrieve current feature flags"
   exit 1
 fi
 
-echo "Found ConfigMap: $CONFIGMAP_NAME"
+echo "Enabling kafkaQueueProblems feature flag via API..."
 
-# Use "10" variant for 10x message load (as recommended in the scenario notes)
-kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.kafkaQueueProblems.defaultVariant = "10" | .flags.kafkaQueueProblems.state = "ENABLED" | tojson' | \
-  kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+# Update the kafkaQueueProblems flag in the config (using "on" variant for 100x multiplier)
+UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .kafkaQueueProblems.defaultVariant = "on" | .kafkaQueueProblems.state = "ENABLED")}}')
 
-echo "Restarting flagd pod to apply changes..."
-kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
+# Write the updated config back via API
+curl -f -X POST 'http://localhost:30400/api/write' \
+  -H 'Accept: */*' \
+  -H 'Content-Type: application/json' \
+  -H 'Pragma: no-cache' \
+  --data-raw "$UPDATED_CONFIG" \
+  --insecure || {
+    echo "ERROR: Failed to update feature flags via API"
+    exit 1
+  }
 
-echo "Waiting for flagd pod to be ready..."
-kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
-
-echo "✅ Incident triggered! Kafka queue is now being flooded at 10x the normal message rate."
+echo "✅ Incident triggered! Kafka queue is now being flooded at 100x the normal message rate."
 echo "Note: Allow 2-3 minutes for consumer lag to build up and become visible in metrics."
 echo ""

@@ -3,33 +3,31 @@ set -euo pipefail
 
 echo "=== Setting up Incident 2: Payment Service Unreachable ==="
 
-# Get the flagd ConfigMap and update it to enable paymentUnreachable
-echo "Enabling paymentUnreachable feature flag via ConfigMap..."
+echo "Retrieving current feature flag configuration from API..."
 
-# Get current config from ConfigMap
-CONFIGMAP_NAME=$(kubectl get configmap -n opentelemetry-demo -l app.kubernetes.io/component=flagd -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+# Get the current config from the API (flagd exposed on NodePort 30400)
+CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read')
 
-if [ -z "$CONFIGMAP_NAME" ]; then
-  echo "ERROR: Could not find flagd ConfigMap"
-  echo "Available ConfigMaps:"
-  kubectl get configmaps -n opentelemetry-demo
+if [ -z "$CURRENT_CONFIG" ]; then
+  echo "ERROR: Failed to retrieve current feature flags"
   exit 1
 fi
 
-echo "Found ConfigMap: $CONFIGMAP_NAME"
+echo "Enabling paymentUnreachable feature flag via API..."
 
-# Get the current config, modify it, and update the ConfigMap
-kubectl get configmap $CONFIGMAP_NAME -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] | fromjson | .flags.paymentUnreachable.defaultVariant = "on" | .flags.paymentUnreachable.state = "ENABLED" | tojson' | \
-  kubectl patch configmap $CONFIGMAP_NAME -n opentelemetry-demo --type merge -p "{\"data\":{\"demo.flagd.json\":$(cat)}}"
+# Update the paymentUnreachable flag in the config
+UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .paymentUnreachable.defaultVariant = "on" | .paymentUnreachable.state = "ENABLED")}}')
 
-# Restart flagd pod to pick up the new configuration
-echo "Restarting flagd pod to apply changes..."
-kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd
-
-# Wait for new pod to be ready
-echo "Waiting for flagd pod to be ready..."
-kubectl wait --for=condition=ready pod -n opentelemetry-demo -l app.kubernetes.io/component=flagd --timeout=60s
+# Write the updated config back via API
+curl -f -X POST 'http://localhost:30400/api/write' \
+  -H 'Accept: */*' \
+  -H 'Content-Type: application/json' \
+  -H 'Pragma: no-cache' \
+  --data-raw "$UPDATED_CONFIG" \
+  --insecure || {
+    echo "ERROR: Failed to update feature flags via API"
+    exit 1
+  }
 
 echo "✅ Incident triggered! Payment service is now unreachable."
 echo ""

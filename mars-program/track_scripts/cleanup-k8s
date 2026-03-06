@@ -5,7 +5,7 @@ set -uo pipefail  # Remove -e so script continues on errors
 WORK_DIR="$(pwd)"
 
 # Set up parameters (see config.yml for other env variables)
-export TF_VAR_newrelic_api_key="${MARS_PARENT_API_KEY}"
+export TF_VAR_newrelic_api_key="${MARS_GAMEDAY_API_KEY}"
 export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
 export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
 # Construct email as username+participantid@domain.com
@@ -18,7 +18,7 @@ export TF_VAR_newrelic_account_id=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/
 echo "🧹 Cleaning up New Relic teams..."
 
 # Get credentials
-NR_API_KEY="${MARS_PARENT_API_KEY}"
+NR_API_KEY="${MARS_GAMEDAY_API_KEY}"
 NR_ACCOUNT_ID="${TF_VAR_newrelic_account_id}"
 
 if [[ -n "$NR_API_KEY" ]]; then

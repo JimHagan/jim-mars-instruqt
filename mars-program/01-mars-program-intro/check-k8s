@@ -21,7 +21,7 @@ if [[ -z "$WORKLOAD_NAME" ]]; then
 fi
 
 # Get New Relic credentials from environment
-NR_API_KEY="${MARS_PARENT_API_KEY}"
+NR_API_KEY="${MARS_GAMEDAY_API_KEY}"
 NR_ACCOUNT_ID=$(cd opentelemetry-demo/newrelic/terraform/nr_account && terraform output -raw account_id)
 
 if [[ -z "$NR_API_KEY" ]] || [[ -z "$NR_ACCOUNT_ID" ]]; then

@@ -12,7 +12,7 @@ done
 WORK_DIR="$(pwd)"
 
 # Set up parameters (see config.yml for other env variables)
-export TF_VAR_newrelic_api_key="${MARS_PARENT_API_KEY}"
+export TF_VAR_newrelic_api_key="${MARS_GAMEDAY_API_KEY}"
 export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
 export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
 # Construct email as username+participantid@domain.com

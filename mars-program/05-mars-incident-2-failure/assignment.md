@@ -36,7 +36,7 @@ Use New Relic to investigate and identify:
 
 1. **Which service** is the source of the checkout errors?
 2. **Which downstream dependency** is unreachable?
-3. **What error type** appears in the traces?
+3. **What exception name** appears in the traces?
 
 ## 🔍 Investigation Guide
 
@@ -75,7 +75,7 @@ Once you've identified the root cause, go to the **Check** terminal and enter yo
 **Answer Format:**
 
 ```
-failing service; unreachable dependency; error type
+failing service; unreachable dependency; exception name
 ```
 
 **Example:** `cartservice; emailservice; service unavailable`

@@ -9,7 +9,7 @@ EXPECTED_ROOT_CAUSE="product catalog failure"
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("product catalog service" "product-catalog-service" "productcatalog")
 ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "error spike" "service errors")
-ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag" "productcatalogfailure" "specific product failing" "oljcespc7z")
+ALT_ROOT_CAUSE_ANSWERS=("catalog failure" "product catalog error" "catalog service failure" "feature flag" "productcatalogfailure" "specific product failing" "oljcespc7z" "Explorascope")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {

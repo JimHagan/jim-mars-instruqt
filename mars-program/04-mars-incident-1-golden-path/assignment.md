@@ -20,6 +20,9 @@ The `productCatalogFailure` feature flag was enabled, causing the **Product Cata
 
 ![Product Catalog Failure Alerts](product-catalog-failure-alerts.png)
 
+
+## Errors Inbox View
+![Product Catalog Failure Inbox](product-catalog-failure-errors-inbox.png)
 ---
 
 ## The Ideal Debugging Path

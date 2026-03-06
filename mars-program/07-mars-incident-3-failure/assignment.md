@@ -3,7 +3,7 @@ slug: mars-incident-3-failure
 id: y6xxocxsyopf
 type: challenge
 title: 'Incident 3: Failure'
-teaser: The shop feels sluggish — customers are bouncing before pages load
+teaser: The Homepage Just Isn't Right
 tabs:
 - id: etdymdhv15kg
   title: Check
@@ -21,14 +21,13 @@ timelimit: 1800
 enhanced_loading: null
 ---
 
-# 🚨 Incident Alert: Store Feels Extremely Slow
+# 🚨 Incident Alert: Image Slow Load
 
 **Severity:** P2 — User Experience Degradation
-**Impact:** Product pages are taking an unusually long time to fully load
+**Impact:** Product pages are taking longer to fully load
 
 Your team is paged. Customers are complaining that the **Astronomy Shop** feels "broken" and "unusable."
-Pages are loading but something is visibly wrong — the experience is painfully slow, and bounce rates are spiking.
-No errors are showing up in the obvious places, making this one tricky to pin down.
+Pages are loading but something is visibly wrong — the customer experience is bad and bounce rates are spiking.
 
 ## 🎯 Your Mission
 
@@ -80,12 +79,12 @@ Once you've identified the root cause, go to the **Check** terminal and enter:
 service name; issue type; root cause
 ```
 
-**Example:** `checkoutservice; high error rate; database connection timeout`
+**Example:** `search-service; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
 - Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `product catalog failure`)
+- Root cause: what is causing this? (e.g., `database connection timeout`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 

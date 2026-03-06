@@ -16,6 +16,10 @@ enhanced_loading: null
 
 The `imageSlowLoad` feature flag was enabled, injecting artificial latency into the **Image Provider service** for every image request. Product pages appeared to load (HTML and text came through fine) but images took seconds to appear. This caused **Largest Contentful Paint (LCP)** — a Core Web Vital — to spike dramatically, signaling a poor user experience even without errors.
 
+## Homepage View
+
+![ImageSlowLoadHomePage](image-slow-load-homepage.png)
+
 ---
 
 ## The Ideal Debugging Path

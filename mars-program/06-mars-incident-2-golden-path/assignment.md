@@ -16,7 +16,14 @@ enhanced_loading: null
 
 The `paymentUnreachable` feature flag was enabled, causing the **Checkout service** to use a bad address when calling the **Payment service**. Every checkout attempt resulted in a connection failure — the checkout service could not reach the payment service at all. 100% of orders were failing.
 
+## Alerts For This Incident
+
 ![PaymentServiceUnreachable Alerts](payment-service-unreachable-alerts.png)
+
+
+## Error Chart For This Incident
+
+![PaymentServiceUnreachable Error Chart](payment-service-unreachable-error-rate.png)
 
 ---
 

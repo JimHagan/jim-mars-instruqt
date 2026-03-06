@@ -16,6 +16,10 @@ enhanced_loading: null
 
 The `paymentFailure` feature flag was enabled, causing the **Payment service** to randomly fail a percentage of charge requests. Unlike a total outage, this was an **intermittent failure** — some transactions succeeded while others failed, making it harder to diagnose because the system appeared to be "working" some of the time.
 
+## Error Rate Chart
+
+![Payment Failure Error Rate](random-payment-failure-chart.png)]
+
 ---
 
 ## The Ideal Debugging Path

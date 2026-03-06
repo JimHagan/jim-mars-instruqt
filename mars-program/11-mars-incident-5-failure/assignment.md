@@ -75,12 +75,12 @@ Once you've identified the root cause, go to the **Check** terminal and enter yo
 service name; issue type; root cause
 ```
 
-**Example:** `checkoutservice; high error rate; database connection timeout`
+**Example:** `search-service; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
 - Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `product catalog failure`)
+- Root cause: what is causing this? (e.g., `database connection timeout`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 

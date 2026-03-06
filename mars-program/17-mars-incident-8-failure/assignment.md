@@ -3,7 +3,7 @@ slug: mars-incident-8-failure
 id: g3nxmvq6ptbz
 type: challenge
 title: 'Incident 8: Failure'
-teaser: Order processing is falling behind — Kafka consumers can't keep up
+teaser: Order processing is falling behind
 tabs:
 - id: k6mxqn8vtzbl
   title: Check
@@ -21,7 +21,7 @@ timelimit: 1800
 enhanced_loading: null
 ---
 
-# 🚨 Incident Alert: Message Queue Overload — Order Processing Delayed
+# 🚨 Incident Alert: Order Processing Delayed
 
 **Severity:** P2 — Data Pipeline Degradation
 **Impact:** Order confirmation emails and downstream order processing are severely delayed due to Kafka consumer lag
@@ -75,12 +75,12 @@ Once you've identified the root cause, go to the **Check** terminal and enter yo
 service name; issue type; root cause
 ```
 
-**Example:** `checkoutservice; high error rate; database connection timeout`
+**Example:** `search-service; high error rate; database connection timeout`
 
 **Format hints:**
-- Service name: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
+- Service name: use the exact name as it appears in New Relic (e.g., `search-service`)
 - Issue type: describe what you observe (e.g., `high error rate`)
-- Root cause: what is causing this? (e.g., `product catalog failure`)
+- Root cause: what is causing this? (e.g., `database connection timeout`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 

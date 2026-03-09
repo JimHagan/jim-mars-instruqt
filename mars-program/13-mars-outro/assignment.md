@@ -14,3 +14,7 @@ enhanced_loading: null
 Wait for your GM's instructions as the last incidents are auto-closed, and we can identify who was the fastest debugger today!
 
 Good luck!
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below, otherwise your points will not be counted!

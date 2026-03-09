@@ -142,6 +142,12 @@ SINCE 30 minutes ago
 - **Trace comparison unlocks insights.** Putting a failing trace next to a successful trace visually highlights exactly what differs — the most efficient way to find correlations.
 - **NRQL for deeper analysis.** When simple trace inspection isn't enough, querying span attributes with NRQL lets you statistically test hypotheses (e.g., "does failure correlate with amount?") at scale.
 
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.
+
 <!--
 BETA NOTES — Incident 4 Golden Path
 

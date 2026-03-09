@@ -57,9 +57,10 @@ You'd find a new error group with a message like:
 Error: Product with ID OLJCESPC7Z not found or unavailable
 ```
 
-Click into the error group and look at the **Occurrences** tab. Notice:
-- The same product ID appears in every single trace
-- This is not random — it's a specific product
+Click into the error group and:
+
+- Look at the **Occurrences** tab and notice the same product ID appears in every single trace.
+- Look at the **Profile** tab, and notice this is not random — it's a specific product
 
 **Why Errors Inbox wins here:** It automatically groups similar errors and shows you frequency, so you immediately know "this error is happening a lot, not just once."
 
@@ -109,6 +110,12 @@ The alert links directly back to the APM summary, confirming your finding.
 - **Errors Inbox groups noise into signal.** Instead of reading raw logs, you get a ranked list of what's actually broken.
 - **Span attributes are your evidence.** OpenTelemetry-instrumented services emit rich attributes — `app.product.id`, feature flag names — that pinpoint the exact cause.
 - **Distributed traces connect the dots.** Even if the alert fires on `frontend`, following the trace shows you the real culprit is `productcatalogservice`.
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.
 
 <!--
 BETA NOTES — Incident 1 Golden Path

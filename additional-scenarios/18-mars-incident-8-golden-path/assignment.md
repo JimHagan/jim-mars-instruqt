@@ -133,3 +133,9 @@ With `kafkaQueueProblems` at 10x, you'd see:
 - **Trace timestamps reveal queue wait time.** The gap between `messaging.publish.timestamp` and the consumer span start time is the actual queue latency — invisible without distributed tracing across async boundaries.
 - **Monitor both sides of the queue.** Alert on consumer lag, producer throughput, and consumer throughput separately — the imbalance between producer and consumer rates tells you which side is the problem.
 - **Synthetic transactions for async flows.** Consider using synthetic monitors to test end-to-end async flows (order → confirmation received) to catch delays before users notice.
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.

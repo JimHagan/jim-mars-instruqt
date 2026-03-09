@@ -118,3 +118,9 @@ If `Ready` < `Desired`, Kubernetes is reporting the shortfall — a definitive i
 - **Zero throughput without deployment = K8s routing change.** When traffic suddenly drops to zero without anyone pushing code, look at pod health before looking at application code.
 - **Readiness probes protect users.** The fact that Kubernetes stopped routing traffic is the system working as intended — preventing a degraded pod from serving users. The probe failure is the symptom; the question is why the probe is failing.
 - **Monitor pod readiness as a metric.** Alert on `k8s.pod.ready = 0` for critical services. Don't wait for users to report errors — catch pod readiness failures before they cause full outages.
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.

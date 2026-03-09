@@ -120,3 +120,9 @@ This confirms the cycle: memory leak → OOMKill → pod restart → leak starts
 - **Sawtooth = GC at work. Linear growth = leak.** A healthy service shows memory rise and fall as GC kicks in. A continuous straight line upward is a classic memory leak signature.
 - **Proactive alerting saves SLOs.** A `memory > 80% of limit` alert would have fired before the pod crashed, giving the team time to investigate without an outage.
 - **Look at restart counts.** High restart counts in K8s often indicate OOMKills — a historical record of memory exhaustion that APM alone wouldn't show you.
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.

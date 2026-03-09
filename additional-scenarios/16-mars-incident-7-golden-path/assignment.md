@@ -114,3 +114,9 @@ This confirms it's CPU work, not network/IO waiting. A span blocked on I/O would
 - **Latency without errors = resource constraint.** When you see high latency with near-zero errors, check CPU and memory before looking at application logic.
 - **Trace spans with high duration and no child spans = pure CPU.** If a span is slow and has no downstream calls, the time is spent on computation — confirming CPU contention rather than I/O or network issues.
 - **Set both CPU and memory alerts on all pods.** Resource saturation is as impactful as application errors but requires different alert conditions.
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.

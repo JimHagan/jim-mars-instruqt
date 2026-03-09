@@ -110,6 +110,12 @@ This highlights the value of **proactive alerting on Core Web Vitals** — you c
 - **LCP is a leading indicator.** Monitoring Core Web Vitals gives you signal on user experience degradation before it becomes a flood of support tickets.
 - **Uniform latency is a smell.** When every span for a service has nearly identical high duration, it's likely injected or configured latency — not a random infrastructure issue. Real resource exhaustion causes variable latency.
 
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.
+
 <!--
 BETA NOTES — Incident 3 Golden Path
 

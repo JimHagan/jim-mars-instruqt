@@ -110,6 +110,12 @@ In a real-world scenario, the backing store pod being unhealthy would be visible
 - **Distributed tracing shows dependency depth.** The trace waterfall reveals which layer actually failed — the cart service logic vs. the Redis call vs. the network.
 - **Cross-signal correlation.** APM errors + K8s pod health together paint the full picture of what failed and why.
 
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.
+
 <!--
 BETA NOTES — Incident 5 Golden Path
 

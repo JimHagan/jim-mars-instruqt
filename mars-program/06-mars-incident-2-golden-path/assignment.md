@@ -119,6 +119,12 @@ The error message tells you exactly: the checkout service is trying to connect t
 - **Error messages in spans are your evidence.** "Connection refused" or "no such host" in span attributes immediately tells you it's a network/DNS issue, not a logic bug.
 - **Distributed tracing maps service dependencies.** Without it, you'd have to guess which service is calling which. With it, the callgraph is right there in the waterfall.
 
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may be miss key details.
+
 <!--
 BETA NOTES — Incident 2 Golden Path
 

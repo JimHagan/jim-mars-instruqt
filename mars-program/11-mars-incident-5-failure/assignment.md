@@ -75,7 +75,7 @@ Once you've identified the root cause, go to the **Check** terminal and enter yo
 **Answer Format:**
 
 ```
-failing service; backing store; blocked customer action
+failing service; backing store; specific exception
 ```
 
 **Example:** `checkoutservice; PostgreSQL; place order`

@@ -4,12 +4,12 @@ set -euo pipefail
 # Expected answers (lowercase for case-insensitive comparison)
 EXPECTED_SERVICE="cart"
 EXPECTED_BACKING_STORE="valkey"
-EXPECTED_USER_ACTION="add to cart"
+EXPECTED_EXCEPTION_NAME="Payment request failed. Invalid token. app.loyalty.level=gold"
 
 # Alternative acceptable answers
 ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cartservice" "shopping cart")
 ALT_BACKING_STORE_ANSWERS=("redis" "valkey" "valkey/redis" "redis/valkey" "cache" "backing store" "data store" "in-memory store")
-ALT_USER_ACTION_ANSWERS=("add item to cart" "add items to cart" "adding to cart" "cart add" "shopping cart" "cart operations" "view cart")
+ALT_EXPECTED_EXCEPTION_NAME_ANSWERS=("Invalid token" "Payment request failed" "invalid token" "payment failed")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {
@@ -62,9 +62,9 @@ fi
 
 SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
 BACKING_STORE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
-USER_ACTION_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+EXCEPTION_NAME_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
 
-if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$BACKING_STORE_ANSWER" ]] || [[ -z "$USER_ACTION_ANSWER" ]]; then
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$BACKING_STORE_ANSWER" ]] || [[ -z "$EXCEPTION_NAME_ANSWER" ]]; then
     fail-message "❌ All three parts must be filled. Format: failing service; backing store; blocked customer action"
     exit 1
 fi
@@ -75,9 +75,9 @@ USER_ACTION_CORRECT=false
 
 check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}" && SERVICE_CORRECT=true
 check_answer "$BACKING_STORE_ANSWER" "$EXPECTED_BACKING_STORE" "${ALT_BACKING_STORE_ANSWERS[@]}" && BACKING_STORE_CORRECT=true
-check_answer "$USER_ACTION_ANSWER" "$EXPECTED_USER_ACTION" "${ALT_USER_ACTION_ANSWERS[@]}" && USER_ACTION_CORRECT=true
+check_answer "$EXCEPTION_NAME_ANSWER" "$EXPECTED_EXCEPTION_NAME" "${ALT_EXPECTED_EXCEPTION_NAME_ANSWERS[@]}" && EXCEPTION_NAME_CORRECT=true
 
-if $SERVICE_CORRECT && $BACKING_STORE_CORRECT && $USER_ACTION_CORRECT; then
+if $SERVICE_CORRECT && $BACKING_STORE_CORRECT && $EXCEPTION_NAME_CORRECT; then
     echo "✅ All answers correct! Incident resolved."
     echo "🎯 $SERVICE_ANSWER cannot reach $BACKING_STORE_ANSWER — customers cannot $USER_ACTION_ANSWER"
     exit 0
@@ -85,7 +85,7 @@ else
     CORRECT_COUNT=0
     $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
     $BACKING_STORE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $USER_ACTION_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $EXCEPTION_NAME_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
     fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again. Format: failing service; backing store; blocked customer action"
     exit 1
 fi

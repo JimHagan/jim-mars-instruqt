@@ -7,7 +7,7 @@ teaser: How to debug a product catalog error spike like a pro
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: true
+enhanced_loading: null
 ---
 
 # 🏆 Golden Path: Product Catalog Failure

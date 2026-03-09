@@ -86,6 +86,6 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
-- You have **30 minutes** for this incident
+- You have **10 minutes** for this incident
 - If stuck after 15 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀

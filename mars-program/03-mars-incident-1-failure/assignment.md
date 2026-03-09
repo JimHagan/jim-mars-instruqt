@@ -88,11 +88,12 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
-- You have **30 minutes** for this incident
-- If stuck after 15 minutes, ask your Game Manager for a hint
+- You have **15 minutes** for this incident
+- If stuck after 10 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
 
 <!--
+
 =============================================================================
 BETA TESTING REVIEW NOTES — Incident 1 Failure Path
 =============================================================================
@@ -118,4 +119,5 @@ BETA TESTING REVIEW NOTES — Incident 1 Failure Path
   the challenge setup script runs. Groups who jump in immediately may see
   healthy charts briefly.
 =============================================================================
+
 -->

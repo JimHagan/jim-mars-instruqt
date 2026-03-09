@@ -8,24 +8,33 @@ rm -f /tmp/answers.json
 
 echo "Disabling paymentFailure feature flag..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read' 2>/dev/null || echo "")
+# Update the flagd-config ConfigMap to set paymentFailure defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.paymentFailure.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
 
-if [ -n "$CURRENT_CONFIG" ]; then
-  # Update the paymentFailure flag to disable it
-  UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .paymentFailure.defaultVariant = "off" | .paymentFailure.state = "DISABLED")}}')
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
 
-  # Write the updated config back via API
-  curl -s -X POST 'http://localhost:30400/api/write' \
-    -H 'Accept: */*' \
-    -H 'Content-Type: application/json' \
-    -H 'Pragma: no-cache' \
-    --data-raw "$UPDATED_CONFIG" \
-    --insecure >/dev/null 2>&1 || echo "Warning: Failed to update feature flags via API"
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
 
-  echo "✅ Feature flag disabled"
-else
-  echo "Warning: Could not retrieve flag configuration, skipping flag cleanup"
-fi
+# Restart payment deployment
+kubectl rollout restart deployment payment -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart payment deployment"
+}
+
+# Wait for payment rollout (with short timeout for cleanup)
+kubectl rollout status deployment payment -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: payment rollout did not complete in time"
+}
+
+echo "✅ Feature flag disabled"
 
 echo "✅ Cleanup complete"

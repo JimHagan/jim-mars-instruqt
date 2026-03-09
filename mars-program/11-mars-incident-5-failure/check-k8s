@@ -2,12 +2,12 @@
 set -euo pipefail
 
 # Expected answers (lowercase for case-insensitive comparison)
-EXPECTED_SERVICE="cartservice"
+EXPECTED_SERVICE="cart"
 EXPECTED_BACKING_STORE="valkey"
 EXPECTED_USER_ACTION="add to cart"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cart" "shopping cart")
+ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cartservice" "shopping cart")
 ALT_BACKING_STORE_ANSWERS=("redis" "valkey" "valkey/redis" "redis/valkey" "cache" "backing store" "data store" "in-memory store")
 ALT_USER_ACTION_ANSWERS=("add item to cart" "add items to cart" "adding to cart" "cart add" "shopping cart" "cart operations" "view cart")
 

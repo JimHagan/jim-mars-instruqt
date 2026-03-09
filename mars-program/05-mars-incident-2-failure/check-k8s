@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Expected answers (lowercase for case-insensitive comparison)
-EXPECTED_SERVICE="checkoutservice"
-EXPECTED_DEPENDENCY="paymentservice"
+EXPECTED_SERVICE="checkout"
+EXPECTED_DEPENDENCY="payment"
 EXPECTED_ERROR_TYPE="connection refused"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("checkout service" "checkout-service" "checkout")
-ALT_DEPENDENCY_ANSWERS=("payment service" "payment-service" "payment" "payments")
+ALT_SERVICE_ANSWERS=("checkout service" "checkout-service" "checkoutservice")
+ALT_DEPENDENCY_ANSWERS=("payment service" "payment-service" "payments" "paymentservice")
 ALT_ERROR_ANSWERS=("unavailable" "service unavailable" "connection failed" "network error" "rpc unavailable" "address unreachable" "bad address" "payment unreachable" "payment down")
 
 # Normalize string: lowercase, trim whitespace

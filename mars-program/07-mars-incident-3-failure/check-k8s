@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Expected answers (lowercase for case-insensitive comparison)
-EXPECTED_SERVICE="imageprovider"
+EXPECTED_SERVICE="image-provider"
 DELAY_MIN=4
 DELAY_MAX=6
 EXPECTED_WEB_VITAL="lcp"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("images" "image" "image provider" "image-provider" "imageservice" "image service")
+ALT_SERVICE_ANSWERS=("images" "image" "image provider" "imageprovider" "imageservice" "image service")
 ALT_WEB_VITAL_ANSWERS=("lcp" "largest contentful paint" "lcp score" "largest contentful paint (lcp)" "page load")
 
 # Normalize string: lowercase, trim whitespace

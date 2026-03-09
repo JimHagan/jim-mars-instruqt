@@ -3,31 +3,33 @@ set -euo pipefail
 
 echo "=== Setting up Incident 3: Image Slow Load ==="
 
-echo "Retrieving current feature flag configuration from API..."
+echo "Updating flagd ConfigMap to enable imageSlowLoad..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read')
-
-if [ -z "$CURRENT_CONFIG" ]; then
-  echo "ERROR: Failed to retrieve current feature flags"
-  exit 1
-fi
-
-echo "Enabling imageSlowLoad feature flag via API..."
-
-# Update the imageSlowLoad flag in the config (using "5sec" variant for noticeable impact)
-UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .imageSlowLoad.defaultVariant = "5sec" | .imageSlowLoad.state = "ENABLED")}}')
-
-# Write the updated config back via API
-curl -f -X POST 'http://localhost:30400/api/write' \
-  -H 'Accept: */*' \
-  -H 'Content-Type: application/json' \
-  -H 'Pragma: no-cache' \
-  --data-raw "$UPDATED_CONFIG" \
-  --insecure || {
-    echo "ERROR: Failed to update feature flags via API"
+# Update the flagd-config ConfigMap to set imageSlowLoad defaultVariant to "5sec"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.imageSlowLoad.defaultVariant = "5sec" | tojson)' | \
+  kubectl apply -f - || {
+    echo "ERROR: Failed to update flagd ConfigMap"
     exit 1
   }
+
+echo "Restarting flagd deployment to pick up new configuration..."
+kubectl rollout restart deployment flagd -n opentelemetry-demo
+
+echo "Waiting for flagd rollout to complete..."
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=60s || {
+  echo "ERROR: flagd rollout failed or timed out"
+  exit 1
+}
+
+echo "Restarting frontend deployment to refresh flag cache..."
+kubectl rollout restart deployment frontend -n opentelemetry-demo
+
+echo "Waiting for frontend rollout to complete..."
+kubectl rollout status deployment frontend -n opentelemetry-demo --timeout=60s || {
+  echo "ERROR: frontend rollout failed or timed out"
+  exit 1
+}
 
 echo "✅ Incident triggered! Image loading is now artificially delayed."
 echo ""

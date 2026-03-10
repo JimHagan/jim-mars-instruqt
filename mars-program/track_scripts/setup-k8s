@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# --- VERSION PINS ---
+OTEL_DEMO_COMMIT="09a4136f83c5056461d117b6fc72491581d1d463"  # opentelemetry-demo commit hash (2026-03-09: Fix threshold duration)
+
 # --- HOST CHECKS & CONFIG ---
 echo "Ensure host and env are ready..."
 until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]
@@ -34,9 +37,12 @@ sudo apt-get install -y terraform curl jq
 echo "✅ Dependencies installed!"
 
 # --- CLONE REPO AND SETUP CONFIG ---
-echo "Cloning New Relic's OpenTelemetry Demo..."
+echo "Cloning New Relic's OpenTelemetry Demo (commit: ${OTEL_DEMO_COMMIT})..."
 git clone https://github.com/newrelic/opentelemetry-demo
-echo "✅ OpenTelemetry Demo cloned!"
+cd opentelemetry-demo
+git checkout "${OTEL_DEMO_COMMIT}"
+cd "${WORK_DIR}"
+echo "✅ OpenTelemetry Demo cloned and checked out to commit ${OTEL_DEMO_COMMIT}!"
 
 # --- CREATE NR SUBACCOUNT ---
 echo "Creating New Relic sub-account"
@@ -171,11 +177,6 @@ echo "✅ Demo resources installed!"
 echo "Exposing frontend service on port 30080..."
 kubectl patch svc frontend-proxy -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30080,"protocol":"TCP"}]}}'
 echo "✅ Frontend is now accessible on port 30080"
-
-# --- EXPOSE FLAGD SERVICE ---
-echo "Exposing flagd service on port 30400..."
-kubectl patch svc flagd -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":4000,"targetPort":4000,"nodePort":30400,"protocol":"TCP","name":"api"}]}}'
-echo "✅ Flagd API is now accessible on port 30400"
 
 # --- PROMPT SCRIPT SETUP (TODO: bake this script into a custom image) ---
 # Create ONE generic prompt script that works for ALL challenges

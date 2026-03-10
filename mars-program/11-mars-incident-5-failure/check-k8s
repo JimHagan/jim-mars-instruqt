@@ -1,22 +1,18 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers (lowercase for case-insensitive comparison)
-EXPECTED_SERVICE="cart"
-EXPECTED_BACKING_STORE="valkey"
-EXPECTED_EXCEPTION_NAME="Payment request failed. Invalid token. app.loyalty.level=gold"
+EXPECTED_SERVICE="recommendation"
+EXPECTED_ISSUE_TYPE="memory leak"
+EXPECTED_ROOT_CAUSE="recommendation cache failure"
 
-# Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("cart service" "cart-service" "cartservice" "shopping cart")
-ALT_BACKING_STORE_ANSWERS=("redis" "valkey" "valkey/redis" "redis/valkey" "cache" "backing store" "data store" "in-memory store")
-ALT_EXPECTED_EXCEPTION_NAME_ANSWERS=("Invalid token" "Payment request failed" "invalid token" "payment failed")
+ALT_SERVICE_ANSWERS=("recommendation service" "recommendation-service" "recommendationservice")
+ALT_ISSUE_ANSWERS=("memory" "high memory" "memory exhaustion" "memory growth" "oom" "out of memory" "resource exhaustion")
+ALT_ROOT_CAUSE_ANSWERS=("recommendationcachefailure" "cache memory leak" "unbounded cache" "cache leak" "growing cache" "feature flag")
 
-# Normalize string: lowercase, trim whitespace
 normalize() {
     echo "$1" | tr '[:upper:]' '[:lower:]' | xargs
 }
 
-# Check if answer matches expected or alternatives
 check_answer() {
     local answer="$1"
     local expected="$2"
@@ -56,36 +52,36 @@ fi
 IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
 
 if [[ ${#ANSWERS[@]} -ne 3 ]]; then
-    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: failing service; backing store; blocked customer action"
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: service; issue type; root cause"
     exit 1
 fi
 
 SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
-BACKING_STORE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
-EXCEPTION_NAME_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+ISSUE_TYPE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
+ROOT_CAUSE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
 
-if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$BACKING_STORE_ANSWER" ]] || [[ -z "$EXCEPTION_NAME_ANSWER" ]]; then
-    fail-message "❌ All three parts must be filled. Format: failing service; backing store; blocked customer action"
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]] || [[ -z "$ROOT_CAUSE_ANSWER" ]]; then
+    fail-message "❌ All three parts must be filled. Format: service; issue type; root cause"
     exit 1
 fi
 
 SERVICE_CORRECT=false
-BACKING_STORE_CORRECT=false
-USER_ACTION_CORRECT=false
+ISSUE_TYPE_CORRECT=false
+ROOT_CAUSE_CORRECT=false
 
 check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}" && SERVICE_CORRECT=true
-check_answer "$BACKING_STORE_ANSWER" "$EXPECTED_BACKING_STORE" "${ALT_BACKING_STORE_ANSWERS[@]}" && BACKING_STORE_CORRECT=true
-check_answer "$EXCEPTION_NAME_ANSWER" "$EXPECTED_EXCEPTION_NAME" "${ALT_EXPECTED_EXCEPTION_NAME_ANSWERS[@]}" && EXCEPTION_NAME_CORRECT=true
+check_answer "$ISSUE_TYPE_ANSWER" "$EXPECTED_ISSUE_TYPE" "${ALT_ISSUE_ANSWERS[@]}" && ISSUE_TYPE_CORRECT=true
+check_answer "$ROOT_CAUSE_ANSWER" "$EXPECTED_ROOT_CAUSE" "${ALT_ROOT_CAUSE_ANSWERS[@]}" && ROOT_CAUSE_CORRECT=true
 
-if $SERVICE_CORRECT && $BACKING_STORE_CORRECT && $EXCEPTION_NAME_CORRECT; then
+if $SERVICE_CORRECT && $ISSUE_TYPE_CORRECT && $ROOT_CAUSE_CORRECT; then
     echo "✅ All answers correct! Incident resolved."
-    echo "🎯 $SERVICE_ANSWER cannot reach $BACKING_STORE_ANSWER — customers cannot $USER_ACTION_ANSWER"
+    echo "🎯 Root cause: $SERVICE_ANSWER experiencing $ISSUE_TYPE_ANSWER due to $ROOT_CAUSE_ANSWER"
     exit 0
 else
     CORRECT_COUNT=0
     $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $BACKING_STORE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $EXCEPTION_NAME_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again. Format: failing service; backing store; blocked customer action"
+    $ISSUE_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $ROOT_CAUSE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again."
     exit 1
 fi

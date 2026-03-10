@@ -1,16 +1,16 @@
 #!/bin/bash
 set -uo pipefail  # No -e flag, script continues on errors
 
-echo "=== Cleaning up Incident 5: Cart Service Failure ==="
+echo "=== Cleaning up Incident 6: Recommendation Cache Memory Leak ==="
 
 # Clean up answer file
 rm -f /tmp/answers.json
 
-echo "Disabling cartFailure feature flag..."
+echo "Disabling recommendationCacheFailure feature flag..."
 
-# Update the flagd-config ConfigMap to set cartFailure defaultVariant back to "off"
+# Update the flagd-config ConfigMap to set recommendationCacheFailure defaultVariant back to "off"
 kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
-  jq '.data["demo.flagd.json"] |= (fromjson | .flags.cartFailure.defaultVariant = "off" | tojson)' | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.recommendationCacheFailure.defaultVariant = "off" | tojson)' | \
   kubectl apply -f - >/dev/null 2>&1 || {
     echo "Warning: Failed to update flagd ConfigMap"
   }
@@ -25,16 +25,16 @@ kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/de
   echo "Warning: flagd rollout did not complete in time"
 }
 
-# Restart cart deployment
-kubectl rollout restart deployment cart -n opentelemetry-demo >/dev/null 2>&1 || {
-  echo "Warning: Failed to restart cart deployment"
+# Restart recommendation deployment
+kubectl rollout restart deployment recommendation -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart recommendation deployment"
 }
 
-# Wait for cart rollout (with short timeout for cleanup)
-kubectl rollout status deployment cart -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
-  echo "Warning: cart rollout did not complete in time"
+# Wait for recommendation rollout (with short timeout for cleanup)
+kubectl rollout status deployment recommendation -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: recommendation rollout did not complete in time"
 }
 
-echo "✅ Feature flag disabled"
+echo "✅ Feature flag disabled and memory cleared"
 
 echo "✅ Cleanup complete"

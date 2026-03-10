@@ -1,13 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== Setting up Incident 6: Recommendation Cache Memory Leak ==="
+echo "=== Setting up Incident 5: Cart Service Failure ==="
 
-echo "Updating flagd ConfigMap to enable recommendationCacheFailure..."
+echo "Updating flagd ConfigMap to enable cartFailure..."
 
-# Update the flagd-config ConfigMap to set recommendationCacheFailure defaultVariant to "on"
+# Update the flagd-config ConfigMap to set cartFailure defaultVariant to "on"
 kubectl get configmap flagd-config -n opentelemetry-demo -o json | \
-  jq '.data["demo.flagd.json"] |= (fromjson | .flags.recommendationCacheFailure.defaultVariant = "on" | tojson)' | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.cartFailure.defaultVariant = "on" | tojson)' | \
   kubectl apply -f - || {
     echo "ERROR: Failed to update flagd ConfigMap"
     exit 1
@@ -22,15 +22,14 @@ kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=60s || {
   exit 1
 }
 
-echo "Restarting recommendation deployment to refresh flag cache..."
-kubectl rollout restart deployment recommendation -n opentelemetry-demo
+echo "Restarting cart deployment to refresh flag cache..."
+kubectl rollout restart deployment cart -n opentelemetry-demo
 
-echo "Waiting for recommendation rollout to complete..."
-kubectl rollout status deployment recommendation -n opentelemetry-demo --timeout=60s || {
-  echo "ERROR: recommendation rollout failed or timed out"
+echo "Waiting for cart rollout to complete..."
+kubectl rollout status deployment cart -n opentelemetry-demo --timeout=60s || {
+  echo "ERROR: cart rollout failed or timed out"
   exit 1
 }
 
-echo "✅ Incident triggered! Recommendation service cache memory leak is now active."
-echo "Note: Memory growth is gradual — allow a few minutes for it to become visible in metrics."
+echo "✅ Incident triggered! Cart service will now fail."
 echo ""

@@ -1,37 +1,40 @@
 #!/bin/bash
-set -uo pipefail
+set -uo pipefail  # No -e flag, script continues on errors
 
 echo "=== Cleaning up Incident 9: Failed Readiness Probe ==="
 
+# Clean up answer file
 rm -f /tmp/answers.json
 
 echo "Disabling failedReadinessProbe feature flag..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read' 2>/dev/null || echo "")
+# Update the flagd-config ConfigMap to set failedReadinessProbe defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.failedReadinessProbe.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
 
-if [ -n "$CURRENT_CONFIG" ]; then
-  # Update the failedReadinessProbe flag to disable it
-  UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .failedReadinessProbe.defaultVariant = "off" | .failedReadinessProbe.state = "DISABLED")}}')
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
 
-  # Write the updated config back via API
-  curl -s -X POST 'http://localhost:30400/api/write' \
-    -H 'Accept: */*' \
-    -H 'Content-Type: application/json' \
-    -H 'Pragma: no-cache' \
-    --data-raw "$UPDATED_CONFIG" \
-    --insecure >/dev/null 2>&1 || echo "Warning: Failed to update feature flags via API"
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
 
-  # Allow time for the flag change to propagate before restarting the cartservice
-  sleep 5
+# Restart cart deployment
+kubectl rollout restart deployment cart -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart cart deployment"
+}
 
-  # Force a restart of the cartservice pod to clear any NotReady state
-  echo "Restarting cartservice pod to restore readiness..."
-  kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/name=cartservice 2>/dev/null || true
+# Wait for cart rollout (with short timeout for cleanup)
+kubectl rollout status deployment cart -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: cart rollout did not complete in time"
+}
 
-  echo "✅ Feature flag disabled and cartservice pod restarted"
-else
-  echo "Warning: Could not retrieve flag configuration, skipping flag cleanup"
-fi
+echo "✅ Feature flag disabled and cart deployment restarted"
 
 echo "✅ Cleanup complete"

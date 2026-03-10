@@ -1,30 +1,40 @@
 #!/bin/bash
-set -uo pipefail
+set -uo pipefail  # No -e flag, script continues on errors
 
 echo "=== Cleaning up Incident 8: Kafka Queue Problems ==="
 
+# Clean up answer file
 rm -f /tmp/answers.json
 
 echo "Disabling kafkaQueueProblems feature flag..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read' 2>/dev/null || echo "")
+# Update the flagd-config ConfigMap to set kafkaQueueProblems defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.kafkaQueueProblems.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
 
-if [ -n "$CURRENT_CONFIG" ]; then
-  # Update the kafkaQueueProblems flag to disable it (reset to "off" variant)
-  UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .kafkaQueueProblems.defaultVariant = "off" | .kafkaQueueProblems.state = "DISABLED")}}')
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
 
-  # Write the updated config back via API
-  curl -s -X POST 'http://localhost:30400/api/write' \
-    -H 'Accept: */*' \
-    -H 'Content-Type: application/json' \
-    -H 'Pragma: no-cache' \
-    --data-raw "$UPDATED_CONFIG" \
-    --insecure >/dev/null 2>&1 || echo "Warning: Failed to update feature flags via API"
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
 
-  echo "✅ Feature flag disabled — consumer lag will drain gradually"
-else
-  echo "Warning: Could not retrieve flag configuration, skipping flag cleanup"
-fi
+# Restart kafka deployment
+kubectl rollout restart deployment kafka -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart kafka deployment"
+}
+
+# Wait for kafka rollout (with short timeout for cleanup)
+kubectl rollout status deployment kafka -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: kafka rollout did not complete in time"
+}
+
+echo "✅ Feature flag disabled — consumer lag will drain gradually"
 
 echo "✅ Cleanup complete"

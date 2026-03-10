@@ -1,35 +1,40 @@
 #!/bin/bash
-set -uo pipefail
+set -uo pipefail  # No -e flag, script continues on errors
 
 echo "=== Cleaning up Incident 6: Recommendation Cache Memory Leak ==="
 
+# Clean up answer file
 rm -f /tmp/answers.json
 
 echo "Disabling recommendationCacheFailure feature flag..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read' 2>/dev/null || echo "")
+# Update the flagd-config ConfigMap to set recommendationCacheFailure defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.recommendationCacheFailure.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
 
-if [ -n "$CURRENT_CONFIG" ]; then
-  # Update the recommendationCacheFailure flag to disable it
-  UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .recommendationCacheFailure.defaultVariant = "off" | .recommendationCacheFailure.state = "DISABLED")}}')
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
 
-  # Write the updated config back via API
-  curl -s -X POST 'http://localhost:30400/api/write' \
-    -H 'Accept: */*' \
-    -H 'Content-Type: application/json' \
-    -H 'Pragma: no-cache' \
-    --data-raw "$UPDATED_CONFIG" \
-    --insecure >/dev/null 2>&1 || echo "Warning: Failed to update feature flags via API"
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
 
-  # Also restart the recommendation service to clear the leaked memory
-  echo "Restarting recommendationservice to clear memory leak..."
-  kubectl rollout restart deployment -n opentelemetry-demo -l app.kubernetes.io/name=recommendationservice 2>/dev/null || \
-    kubectl delete pod -n opentelemetry-demo -l app.kubernetes.io/name=recommendationservice 2>/dev/null || true
+# Restart recommendation deployment
+kubectl rollout restart deployment recommendation -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart recommendation deployment"
+}
 
-  echo "✅ Feature flag disabled and memory cleared"
-else
-  echo "Warning: Could not retrieve flag configuration, skipping flag cleanup"
-fi
+# Wait for recommendation rollout (with short timeout for cleanup)
+kubectl rollout status deployment recommendation -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: recommendation rollout did not complete in time"
+}
+
+echo "✅ Feature flag disabled and memory cleared"
 
 echo "✅ Cleanup complete"

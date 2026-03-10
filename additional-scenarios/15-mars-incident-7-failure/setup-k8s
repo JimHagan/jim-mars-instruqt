@@ -3,31 +3,33 @@ set -euo pipefail
 
 echo "=== Setting up Incident 7: Ad Service High CPU ==="
 
-echo "Retrieving current feature flag configuration from API..."
+echo "Updating flagd ConfigMap to enable adHighCpu..."
 
-# Get the current config from the API (flagd exposed on NodePort 30400)
-CURRENT_CONFIG=$(curl -s 'http://localhost:30400/api/read')
-
-if [ -z "$CURRENT_CONFIG" ]; then
-  echo "ERROR: Failed to retrieve current feature flags"
-  exit 1
-fi
-
-echo "Enabling adHighCpu feature flag via API..."
-
-# Update the adHighCpu flag in the config
-UPDATED_CONFIG=$(echo "$CURRENT_CONFIG" | jq '{data: {flags: (.flags | .adHighCpu.defaultVariant = "on" | .adHighCpu.state = "ENABLED")}}')
-
-# Write the updated config back via API
-curl -f -X POST 'http://localhost:30400/api/write' \
-  -H 'Accept: */*' \
-  -H 'Content-Type: application/json' \
-  -H 'Pragma: no-cache' \
-  --data-raw "$UPDATED_CONFIG" \
-  --insecure || {
-    echo "ERROR: Failed to update feature flags via API"
+# Update the flagd-config ConfigMap to set adHighCpu defaultVariant to "on"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.adHighCpu.defaultVariant = "on" | tojson)' | \
+  kubectl apply -f - || {
+    echo "ERROR: Failed to update flagd ConfigMap"
     exit 1
   }
+
+echo "Restarting flagd deployment to pick up new configuration..."
+kubectl rollout restart deployment flagd -n opentelemetry-demo
+
+echo "Waiting for flagd rollout to complete..."
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=60s || {
+  echo "ERROR: flagd rollout failed or timed out"
+  exit 1
+}
+
+echo "Restarting ad deployment to refresh flag cache..."
+kubectl rollout restart deployment ad -n opentelemetry-demo
+
+echo "Waiting for ad rollout to complete..."
+kubectl rollout status deployment ad -n opentelemetry-demo --timeout=60s || {
+  echo "ERROR: ad rollout failed or timed out"
+  exit 1
+}
 
 echo "✅ Incident triggered! Ad service CPU load is now elevated."
 echo "Note: Allow 1-2 minutes for CPU metrics to become clearly visible in New Relic."

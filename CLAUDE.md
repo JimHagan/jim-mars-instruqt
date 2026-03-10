@@ -121,6 +121,67 @@ Every challenge will have a `cleanup-k8s` script that cleans up the failure mode
 
 The `track_scripts/cleanup-k8s` script MUST clean up all resources created, including those created via GraphQL.
 
+### Incident Triggering Pattern
+
+All incidents use **feature flags** managed by flagd to trigger failures. Flags are stored in the `flagd-config` ConfigMap in the `opentelemetry-demo` namespace.
+
+**IMPORTANT**: Always use the ConfigMap approach (not the flagd API) for consistency across all incidents.
+
+#### Standard setup-k8s Pattern
+
+```bash
+# 1. Update flagd ConfigMap (set flag defaultVariant to "on" or specific value)
+kubectl get configmap flagd-config -n opentelemetry-demo -o json | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.<FLAG_NAME>.defaultVariant = "<VALUE>" | tojson)' | \
+  kubectl apply -f -
+
+# 2. Restart flagd deployment (to reload ConfigMap)
+kubectl rollout restart deployment flagd -n opentelemetry-demo
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=60s
+
+# 3. Restart affected service deployment (to refresh flag cache)
+kubectl rollout restart deployment <SERVICE_NAME> -n opentelemetry-demo
+kubectl rollout status deployment <SERVICE_NAME> -n opentelemetry-demo --timeout=60s
+```
+
+#### Standard cleanup-k8s Pattern
+
+```bash
+# 1. Update flagd ConfigMap (set flag defaultVariant back to "off")
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.<FLAG_NAME>.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1
+
+# 2. Restart flagd deployment (silent, with error handling)
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1
+
+# 3. Restart affected service deployment (silent, with error handling)
+kubectl rollout restart deployment <SERVICE_NAME> -n opentelemetry-demo >/dev/null 2>&1
+kubectl rollout status deployment <SERVICE_NAME> -n opentelemetry-demo --timeout=30s >/dev/null 2>&1
+```
+
+#### Feature Flag to Service Mapping
+
+| Incident | Feature Flag | Flag Value | Service to Restart |
+|----------|--------------|------------|-------------------|
+| 1 | `productCatalogFailure` | on/off | `product-catalog` |
+| 2 | `paymentUnreachable` | on/off | `checkout` |
+| 3 | `imageSlowLoad` | 5sec/off | `frontend` |
+| 4 | `paymentFailure` | 25%/off | `payment` |
+| 5 | `cartFailure` | on/off | `cart` |
+| 6 | `recommendationCacheFailure` | on/off | `recommendation` |
+| 7 | `adHighCpu` | on/off | `ad` |
+| 8 | `kafkaQueueProblems` | on/off | `kafka` |
+| 9 | `failedReadinessProbe` | on/off | `cart` |
+
+**Key Principles**:
+- **Always restart flagd first** - It needs to reload the ConfigMap
+- **Always restart the affected service** - It needs to refresh its flag cache
+- The service to restart is the one that *consumes* the feature flag (checks it in code)
+- Use longer timeouts (60s) in setup-k8s, shorter timeouts (30s) in cleanup-k8s
+- cleanup-k8s should suppress errors and continue on failure (use `set -uo pipefail`, not `set -euo pipefail`)
+
 ## Development Guidelines
 
 ### Check Script Best Practices

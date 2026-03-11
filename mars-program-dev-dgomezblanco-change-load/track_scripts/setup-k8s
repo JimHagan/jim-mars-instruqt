@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # --- VERSION PINS ---
-OTEL_DEMO_COMMIT="9756cdb05caac3ff73c845a31ddb5eaca89ff324"  # Updated SLOs and Alerts. Tag cleanup. Dashboard query fix. (#156)
+OTEL_DEMO_COMMIT="09a4136f83c5056461d117b6fc72491581d1d463"  # opentelemetry-demo commit hash (2026-03-09: Fix threshold duration)
 
 # --- HOST CHECKS & CONFIG ---
 echo "Ensure host and env are ready..."

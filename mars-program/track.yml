@@ -15,6 +15,7 @@ developers:
 - reeselee@newrelic.com
 show_timer: true
 timelimit: 10800
+idle_timeout: 3600
 lab_config:
   sidebar_enabled: true
   feedback_recap_enabled: true

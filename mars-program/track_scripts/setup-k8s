@@ -145,6 +145,20 @@ in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
 chmod +x "${INSTALL_SCRIPT}"
 echo "✅ install-k8s.sh patched!"
 
+# --- PATCH OPENTELEMETRY-DEMO.YAML TO INCREASE LOAD ---
+echo "Patching opentelemetry-demo.yaml to increase load to 50 users with 8GB memory..."
+DEMO_VALUES_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/opentelemetry-demo.yaml"
+sed -i.bak '/^# Disable non-NR components$/i\
+  load-generator:\
+    resources:\
+      limits:\
+        memory: 8Gi\
+    envOverrides:\
+      - name: LOCUST_USERS\
+        value: "50"\
+' "${DEMO_VALUES_FILE}"
+echo "✅ opentelemetry-demo.yaml patched to use 50 locust users with 8GB memory limit!"
+
 # --- DEPLOY DEMO TO KUBERNETES ---
 echo "Deploying OpenTelemetry Demo..."
 echo "Waiting for Kubernetes API..."

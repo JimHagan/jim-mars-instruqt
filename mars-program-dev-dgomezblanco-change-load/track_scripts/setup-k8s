@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # --- VERSION PINS ---
-OTEL_DEMO_COMMIT="09a4136f83c5056461d117b6fc72491581d1d463"  # opentelemetry-demo commit hash (2026-03-09: Fix threshold duration)
+OTEL_DEMO_COMMIT="9756cdb05caac3ff73c845a31ddb5eaca89ff324"  # Updated SLOs and Alerts. Tag cleanup. Dashboard query fix. (#156)
 
 # --- HOST CHECKS & CONFIG ---
 echo "Ensure host and env are ready..."
@@ -144,6 +144,20 @@ in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
 
 chmod +x "${INSTALL_SCRIPT}"
 echo "✅ install-k8s.sh patched!"
+
+# --- PATCH OPENTELEMETRY-DEMO.YAML TO INCREASE LOAD ---
+echo "Patching opentelemetry-demo.yaml to increase load to 50 users with 8GB memory..."
+DEMO_VALUES_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/opentelemetry-demo.yaml"
+sed -i.bak '/^# Disable non-NR components$/i\
+  load-generator:\
+    resources:\
+      limits:\
+        memory: 8Gi\
+    envOverrides:\
+      - name: LOCUST_USERS\
+        value: "50"\
+' "${DEMO_VALUES_FILE}"
+echo "✅ opentelemetry-demo.yaml patched to use 50 locust users with 8GB memory limit!"
 
 # --- DEPLOY DEMO TO KUBERNETES ---
 echo "Deploying OpenTelemetry Demo..."

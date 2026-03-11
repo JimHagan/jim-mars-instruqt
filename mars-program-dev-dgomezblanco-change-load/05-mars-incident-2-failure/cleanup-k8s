@@ -1,0 +1,40 @@
+#!/bin/bash
+set -uo pipefail  # No -e flag, script continues on errors
+
+echo "=== Cleaning up Incident 2: Payment Service Unreachable ==="
+
+# Clean up answer file
+rm -f /tmp/answers.json
+
+echo "Disabling paymentUnreachable feature flag..."
+
+# Update the flagd-config ConfigMap to set paymentUnreachable defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.paymentUnreachable.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
+
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
+
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
+
+# Restart checkout deployment
+kubectl rollout restart deployment checkout -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart checkout deployment"
+}
+
+# Wait for checkout rollout (with short timeout for cleanup)
+kubectl rollout status deployment checkout -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: checkout rollout did not complete in time"
+}
+
+echo "✅ Feature flag disabled"
+
+echo "✅ Cleanup complete"

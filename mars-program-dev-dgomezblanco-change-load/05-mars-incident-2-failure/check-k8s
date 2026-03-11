@@ -1,0 +1,111 @@
+#!/bin/bash
+set -euo pipefail
+
+# Expected answers (lowercase for case-insensitive comparison)
+EXPECTED_SERVICE="checkout"
+EXPECTED_DEPENDENCY="payment"
+EXPECTED_ERROR_TYPE="connection refused"
+
+# Alternative acceptable answers
+ALT_SERVICE_ANSWERS=("checkout service" "checkout-service" "checkoutservice")
+ALT_DEPENDENCY_ANSWERS=("payment service" "payment-service" "payments" "paymentservice")
+ALT_ERROR_ANSWERS=("unavailable" "service unavailable" "connection failed" "network error" "rpc unavailable" "address unreachable" "bad address" "payment unreachable" "payment down")
+
+# Normalize string: lowercase, trim whitespace
+normalize() {
+    echo "$1" | tr '[:upper:]' '[:lower:]' | xargs
+}
+
+# Check if answer matches expected or alternatives
+check_answer() {
+    local answer="$1"
+    local expected="$2"
+    shift 2
+    local alternatives=("$@")
+
+    local normalized_answer=$(normalize "$answer")
+    local normalized_expected=$(normalize "$expected")
+
+    # Check exact match
+    if [[ "$normalized_answer" == "$normalized_expected" ]]; then
+        return 0
+    fi
+
+    # Check alternatives
+    for alt in "${alternatives[@]}"; do
+        local normalized_alt=$(normalize "$alt")
+        if [[ "$normalized_answer" == "$normalized_alt" ]]; then
+            return 0
+        fi
+    done
+
+    return 1
+}
+
+# Check if answer file exists
+ANSWER_FILE="/tmp/answers.json"
+if [[ ! -f "$ANSWER_FILE" ]]; then
+    fail-message "❌ No answers submitted yet. Please enter your answers in the Check terminal."
+    exit 1
+fi
+
+# Read answer from JSON file (format: {"answer": "part1; part2; part3"})
+FULL_ANSWER=$(jq -r '.answer // empty' "$ANSWER_FILE")
+
+# Check if answer is empty
+if [[ -z "$FULL_ANSWER" ]]; then
+    fail-message "❌ Answer cannot be empty."
+    exit 1
+fi
+
+# Parse semi-colon separated answer
+IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
+
+# Check if we have exactly 3 parts
+if [[ ${#ANSWERS[@]} -ne 3 ]]; then
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: failing service; unreachable dependency; error type"
+    exit 1
+fi
+
+# Extract and trim each answer
+SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
+DEPENDENCY_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
+ERROR_TYPE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+
+# Check if any part is empty
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$DEPENDENCY_ANSWER" ]] || [[ -z "$ERROR_TYPE_ANSWER" ]]; then
+    fail-message "❌ All three parts must be filled. Format: failing service; unreachable dependency; error type"
+    exit 1
+fi
+
+# Validate each answer
+SERVICE_CORRECT=false
+DEPENDENCY_CORRECT=false
+ERROR_TYPE_CORRECT=false
+
+if check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}"; then
+    SERVICE_CORRECT=true
+fi
+
+if check_answer "$DEPENDENCY_ANSWER" "$EXPECTED_DEPENDENCY" "${ALT_DEPENDENCY_ANSWERS[@]}"; then
+    DEPENDENCY_CORRECT=true
+fi
+
+if check_answer "$ERROR_TYPE_ANSWER" "$EXPECTED_ERROR_TYPE" "${ALT_ERROR_ANSWERS[@]}"; then
+    ERROR_TYPE_CORRECT=true
+fi
+
+# Final result
+if $SERVICE_CORRECT && $DEPENDENCY_CORRECT && $ERROR_TYPE_CORRECT; then
+    echo "✅ All answers correct! Incident resolved."
+    echo "🎯 $SERVICE_ANSWER cannot reach $DEPENDENCY_ANSWER — error: $ERROR_TYPE_ANSWER"
+    exit 0
+else
+    CORRECT_COUNT=0
+    $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $DEPENDENCY_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $ERROR_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again. Format: failing service; unreachable dependency; error type"
+    exit 1
+fi

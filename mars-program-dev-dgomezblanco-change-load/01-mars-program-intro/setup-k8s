@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+
+# Set the variable so that it can be used in the assignment
+agent variable set SANDBOX_ID $INSTRUQT_PARTICIPANT_ID

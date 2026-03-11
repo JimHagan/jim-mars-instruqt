@@ -1,0 +1,43 @@
+#!/bin/bash
+set -uo pipefail  # No -e flag, script continues on errors
+
+echo "=== Cleaning up Incident 1 ==="
+
+# Clean up answer file
+rm -f /tmp/answers.json
+
+echo "Disabling productCatalogFailure feature flag..."
+
+# Update the flagd-config ConfigMap to set productCatalogFailure defaultVariant back to "off"
+kubectl get configmap flagd-config -n opentelemetry-demo -o json 2>/dev/null | \
+  jq '.data["demo.flagd.json"] |= (fromjson | .flags.productCatalogFailure.defaultVariant = "off" | tojson)' | \
+  kubectl apply -f - >/dev/null 2>&1 || {
+    echo "Warning: Failed to update flagd ConfigMap"
+  }
+
+# Restart flagd deployment
+kubectl rollout restart deployment flagd -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart flagd deployment"
+}
+
+# Wait for flagd rollout (with short timeout for cleanup)
+kubectl rollout status deployment flagd -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: flagd rollout did not complete in time"
+}
+
+# Restart product-catalog deployment
+kubectl rollout restart deployment product-catalog -n opentelemetry-demo >/dev/null 2>&1 || {
+  echo "Warning: Failed to restart product-catalog deployment"
+}
+
+# Wait for product-catalog rollout (with short timeout for cleanup)
+kubectl rollout status deployment product-catalog -n opentelemetry-demo --timeout=30s >/dev/null 2>&1 || {
+  echo "Warning: product-catalog rollout did not complete in time"
+}
+
+echo "✅ Feature flag disabled"
+
+# Clean up answer file and prompt script
+rm -f /tmp/incident1_answers.json
+
+echo "✅ Cleanup complete"

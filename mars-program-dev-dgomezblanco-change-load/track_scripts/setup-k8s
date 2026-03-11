@@ -1,0 +1,235 @@
+#!/bin/bash
+set -euo pipefail
+
+# --- VERSION PINS ---
+OTEL_DEMO_COMMIT="09a4136f83c5056461d117b6fc72491581d1d463"  # opentelemetry-demo commit hash (2026-03-09: Fix threshold duration)
+
+# --- HOST CHECKS & CONFIG ---
+echo "Ensure host and env are ready..."
+until [ -f /opt/instruqt/bootstrap/host-bootstrap-completed ]
+do
+    sleep 2
+done
+
+# Store the working directory before cloning
+WORK_DIR="$(pwd)"
+
+# Set up parameters (see config.yml for other env variables)
+export TF_VAR_newrelic_api_key="${MARS_GAMEDAY_API_KEY}"
+export TF_VAR_subaccount_name="${NR_SUBACCOUNT_NAME_PREFIX} ${INSTRUQT_PARTICIPANT_ID}"
+export TF_VAR_readonly_user_name="${INSTRUQT_PARTICIPANT_ID} - User"
+export TF_VAR_readonly_user_email="${INSTRUCTOR_EMAIL_HANDLE}+${INSTRUQT_PARTICIPANT_ID}@${INSTRUCTOR_EMAIL_DOMAIN}"
+
+echo "✅ Host and env are ready!"
+
+# --- INSTALL DEPENDENCIES (Terraform, jq, curl, go) ---
+echo "Installing dependencies..."
+
+# Add official HashiCorp's repo
+sudo apt-get install -y gnupg software-properties-common
+wget -O- https://apt.releases.hashicorp.com/gpg | gpg --dearmor | sudo tee /usr/share/keyrings/hashicorp-archive-keyring.gpg > /dev/null
+gpg --no-default-keyring --keyring /usr/share/keyrings/hashicorp-archive-keyring.gpg --fingerprint
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(grep -oP '(?<=UBUNTU_CODENAME=).*' /etc/os-release || lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+
+# Update apt and install dependencies
+sudo apt-get update
+sudo apt-get install -y terraform curl jq
+echo "✅ Dependencies installed!"
+
+# --- CLONE REPO AND SETUP CONFIG ---
+echo "Cloning New Relic's OpenTelemetry Demo (commit: ${OTEL_DEMO_COMMIT})..."
+git clone https://github.com/newrelic/opentelemetry-demo
+cd opentelemetry-demo
+git checkout "${OTEL_DEMO_COMMIT}"
+cd "${WORK_DIR}"
+echo "✅ OpenTelemetry Demo cloned and checked out to commit ${OTEL_DEMO_COMMIT}!"
+
+# --- CREATE NR SUBACCOUNT ---
+echo "Creating New Relic sub-account"
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
+./install-nr-account.sh
+
+export TF_VAR_newrelic_account_id=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_account" && terraform output -raw account_id)
+export NEW_RELIC_LICENSE_KEY=$(cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_account" && terraform output -raw license_key)
+
+echo "✅ Subaccount created!"
+
+# --- CREATE BROWSER APP --
+echo "Creating New Relic Browser app..."
+echo "Waiting 60 seconds to avoid account inconsistency..." # (TODO: investigate potential check to avoid "Error: Validation failed: Name should be unique" if app is created too early)
+sleep 60
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/terraform/nr_browser"
+terraform init
+terraform apply -auto-approve
+
+# Get the outputs from the browser terraform module
+BROWSER_LICENSE_KEY=$(terraform output -raw browser_license_key)
+BROWSER_JS_CONFIG=$(terraform output -raw browser_js_config)
+
+# Parse the JSON config to extract individual values from loader_config
+APP_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.applicationID')
+TRUST_KEY=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.trustKey')
+AGENT_ID=$(echo "$BROWSER_JS_CONFIG" | jq -r '.loader_config.agentID')
+echo "✅ Browser app created!"
+
+# --- PATCH TEMPLATE --- (TODO: when we move to Go CLI this won't be needed)
+echo "Patching nr-browser.yaml template..."
+TEMPLATE_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/nr-browser.yaml.tmpl"
+OUTPUT_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/nr-browser.yaml"
+sed \
+  -e "s|{{ .LicenseKey }}|${BROWSER_LICENSE_KEY}|g" \
+  -e "s|{{ .AppID }}|${APP_ID}|g" \
+  -e "s|{{ .AccountID }}|${TF_VAR_newrelic_account_id}|g" \
+  -e "s|{{ .TrustKey }}|${TRUST_KEY}|g" \
+  -e "s|{{ .AgentID }}|${AGENT_ID}|g" \
+  "${TEMPLATE_FILE}" > "${OUTPUT_FILE}"
+echo "✅ nr-browser.yaml template patched!"
+
+# --- PATCH INSTALL-K8S.SH TO SUPPORT BROWSER OVERRIDE --- (TODO: when we move to Go CLI this won't be needed)
+echo "Patching install-k8s.sh to support browser configuration override..."
+INSTALL_SCRIPT="${WORK_DIR}/opentelemetry-demo/newrelic/scripts/install-k8s.sh"
+cp "${INSTALL_SCRIPT}" "${INSTALL_SCRIPT}.bak"
+awk '
+# Add additional_values_file parameter after is_openshift line
+/local is_openshift=\$\{6:-\}/ {
+    print $0
+    print "  local additional_values_file=\${7:-}  # Optional: Additional values file for overrides"
+    next
+}
+
+/# Shift away the first 5 required arguments, then check if 6th exists before shifting it/ {
+    print $0
+    getline  # Read next line: shift 5
+    print $0
+    getline  # Read next line: if [ $# -gt 0 ]; then
+    print $0
+    getline  # Read next line: shift  # Shift away the 6th argument...
+    print $0
+    getline  # Read next line: fi
+    print $0
+    print "  if [ $" "# -gt 0 ]; then"
+    print "    shift  # Shift away the 7th argument (additional_values_file) if it exists"
+    print "  fi"
+    next
+}
+
+# Add logic to include additional values file after the main values file
+/local helm_args=\(.*-f "\$values_file"\)/ {
+    print $0
+    print ""
+    print "  # Add additional values file if provided"
+    print "  if [ -n \"\$additional_values_file\" ]; then"
+    print "    helm_args+=(-f \"\$additional_values_file\")"
+    print "  fi"
+    next
+}
+
+# Modify the OTEL demo installation call to include browser yaml
+/install_or_upgrade_chart "\$OTEL_DEMO_RELEASE_NAME"/ {
+    in_otel_call = 1
+}
+
+# Add the browser yaml as 7th parameter after IS_OPENSHIFT_CLUSTER line in the OTEL call
+in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
+    # Add backslash to continue the line, then add the browser yaml parameter
+    print $0 " \\"
+    print "  \"../k8s/helm/nr-browser.yaml\""
+    in_otel_call = 0
+    next
+}
+
+# Print all other lines as-is
+{ print }
+' "${INSTALL_SCRIPT}.bak" > "${INSTALL_SCRIPT}"
+
+chmod +x "${INSTALL_SCRIPT}"
+echo "✅ install-k8s.sh patched!"
+
+# --- DEPLOY DEMO TO KUBERNETES ---
+echo "Deploying OpenTelemetry Demo..."
+echo "Waiting for Kubernetes API..."
+# Loop until the 'default' service account exists (sign that the API is up)
+until kubectl get serviceaccount default &> /dev/null; do
+  sleep 2
+done
+echo "✅ Cluster is ready!"
+
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
+./install-k8s.sh
+
+echo "Waiting for all pods to be ready..."
+sleep 60 # Wait for pod creation to start
+kubectl wait --for=condition=ready pod --all -n opentelemetry-demo --timeout=600s || true
+echo "✅ OpenTelemetry Demo is fully deployed and ready!"
+
+echo "Waiting 5 minutes for data to show up in New Relic..."
+sleep 300 # Wait for entities to be created in New Relic (TODO: make this an actual GraphQL check)
+
+echo "✅ Entities should be created in New Relic now!"
+
+# --- INSTALL NR RESOURCES (e.g. alerts, SLOs) ---
+echo "Installing New Relic demo resources..."
+cd "${WORK_DIR}/opentelemetry-demo/newrelic/scripts"
+./install-nr-resources.sh
+echo "✅ Demo resources installed!"
+
+# --- EXPOSE FRONTEND SERVICE ---
+echo "Exposing frontend service on port 30080..."
+kubectl patch svc frontend-proxy -n opentelemetry-demo -p '{"spec":{"type":"NodePort","ports":[{"port":8080,"targetPort":8080,"nodePort":30080,"protocol":"TCP"}]}}'
+echo "✅ Frontend is now accessible on port 30080"
+
+# --- PROMPT SCRIPT SETUP (TODO: bake this script into a custom image) ---
+# Create ONE generic prompt script that works for ALL challenges
+echo "Setting up generic prompt script to accept answers..."
+cat > /tmp/generic_prompt <<'EOF'
+#!/bin/bash
+# Generic answer submission script for M.A.R.S. Program challenges
+# Uses /tmp/answers.json for all challenges (cleaned up between challenges)
+
+ANSWER_FILE="/tmp/answers.json"
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  M.A.R.S. Program - Answer Submission                            ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+echo ""
+echo "📝 Read the assignment instructions to understand what to submit."
+echo ""
+
+# Show current answer if exists
+if [[ -f "$ANSWER_FILE" ]]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📋 Your Current Answer:"
+    echo ""
+    CURRENT=$(jq -r '.answer // "Not entered"' "$ANSWER_FILE" 2>/dev/null || echo "Not entered")
+    echo "  $CURRENT"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+fi
+
+# Continuous submission loop
+while true; do
+    echo "Enter your answer (or press Ctrl+C to exit):"
+    read -p "> " ANSWER
+
+    if [[ -n "$ANSWER" ]]; then
+        echo "{\"answer\": \"$ANSWER\"}" > "$ANSWER_FILE"
+        echo ""
+        echo "✅ Answer saved!"
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📌 Next Steps:"
+        echo "   1️⃣  Click the 'Check' button in Instruqt to validate"
+        echo "   2️⃣  To update your answer, just type a new one above"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "Current answer: $ANSWER"
+        echo ""
+    else
+        echo "❌ Answer cannot be empty. Please try again."
+        echo ""
+    fi
+done
+EOF
+
+chmod +x /tmp/generic_prompt
+echo "✅ Generic prompt ready at /tmp/generic_prompt"

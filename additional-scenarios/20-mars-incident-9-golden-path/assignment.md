@@ -7,7 +7,7 @@ teaser: How to diagnose Kubernetes readiness probe failures using K8s signals an
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Failed Readiness Probe

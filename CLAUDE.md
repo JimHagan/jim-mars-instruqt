@@ -7,6 +7,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This is an Instruqt training track for New Relic's **M.A.R.S. Program** (Maturity Architecture & Reliability Simulation) - a game day training environment for incident response using New Relic observability.
 The track simulates production incidents in a Kubernetes environment running the OpenTelemetry Demo "Astronomy Shop" application.
 
+## Memory Management
+
+**CRITICAL**: Sessions may terminate ungracefully due to VPN configuration. To prevent memory loss:
+
+1. **Create project memory proactively** at the start of any new session:
+   - Check if `~/.claude/projects/<project-path>/memory/` exists
+   - If not, create it immediately with `MEMORY.md`
+   - Initialize with project context and date
+
+2. **Update memory incrementally during sessions**, not at the end:
+   - After solving problems or making decisions
+   - When learning user preferences or patterns
+   - When discovering important architectural details
+   - Immediately after any significant work
+
+3. **Memory structure**:
+   - `MEMORY.md`: Main file (keep under 200 lines, always loaded)
+   - Additional topic files as needed: `debugging.md`, `patterns.md`, etc.
+
+4. **What to save**:
+   - Project patterns and conventions confirmed across work
+   - Solutions to recurring problems
+   - User workflow preferences
+   - Key architectural decisions
+
+5. **What NOT to save**:
+   - Current session temporary state
+   - Incomplete or unverified information
+   - Anything duplicating CLAUDE.md
+
 ## Repository Structure
 
 ```
@@ -16,11 +46,18 @@ mars-program/
 ├── track_scripts/               # Track-level setup/cleanup scripts
 │   ├── setup-k8s               # Initial k8s cluster setup
 │   └── cleanup-k8s             # Track cleanup
-└── [01-10]-*/                  # Challenge directories
+└── [01-13]-*/                  # Challenge directories
     ├── assignment.md           # Challenge instructions (frontmatter + markdown)
     ├── check-k8s              # Validation script (bash)
     ├── setup-k8s              # Challenge setup (optional)
     └── cleanup-k8s            # Challenge cleanup
+
+additional-scenarios/           # Additional incidents not in main track (yet)
+└── [13-20]-*/                  # Challenges for incidents 6-9
+    ├── assignment.md
+    ├── check-k8s
+    ├── setup-k8s
+    └── cleanup-k8s
 ```
 
 ### Challenge Pattern
@@ -28,9 +65,18 @@ mars-program/
 The track follows a pattern of paired challenges:
 - **Intro** (01): Creates team workload and New Relic setup
 - **Readiness** (02): Prepares teams for incidents
-- **Incident pairs** (03-10): Each incident has two challenges:
+- **Incident pairs** (03-12): Each incident has two challenges:
   - **Failure path** (odd numbers): Students investigate and identify root cause
   - **Golden path** (even numbers): Shows optimal debugging approach
+- **Outro** (13): Track conclusion
+
+**Challenge-to-Incident Mapping:**
+- Challenges 03-04: Incident 1
+- Challenges 05-06: Incident 2
+- Challenges 07-08: Incident 3
+- Challenges 09-10: Incident 4
+- Challenges 11-12: Incident 5
+- Additional scenarios: Incidents 6-9 (not yet in main track, located in `additional-scenarios/` directory)
 
 ## Key Technologies
 
@@ -55,8 +101,8 @@ Frontmatter defines Instruqt UI (tabs, layout, time limits). Markdown content is
 
 ### Working with New Relic GraphQL API
 
-As you're developing any script, you might need to call the New Relics GraphQL API.
-In order to do so, you may ask the developer for a user key, which you can the use to introspect the API and test query commands.
+As you're developing any script, you might need to call the New Relic's GraphQL API.
+In order to do so, you may ask the developer for a user key, which you can then use to introspect the API and test query commands.
 Never test GraphQL mutation commands without permission.
 You can find examples of working with this GraphQL API in https://github.com/newrelic/docs-website/tree/main/src/content/docs/apis/nerdgraph/examples
 
@@ -76,7 +122,7 @@ Key files:
 - `track.yml`: Track metadata, timer, UI settings
 - `config.yml`: VM specs, environment variables, secrets
 
-Environment variables and secrets in `configy.yml` are available in all scripts.
+Environment variables and secrets in `config.yml` are available in all scripts.
 However, these env variables are not available in your local env unless the developer makes them available.
 
 ## Architecture Notes
@@ -163,14 +209,21 @@ kubectl rollout status deployment <SERVICE_NAME> -n opentelemetry-demo --timeout
 
 #### Feature Flag to Service Mapping
 
+**Main Track (mars-program/):**
+
 | Incident | Feature Flag | Flag Value | Service to Restart |
 |----------|--------------|------------|-------------------|
 | 1 | `productCatalogFailure` | on/off | `product-catalog` |
 | 2 | `paymentUnreachable` | on/off | `checkout` |
 | 3 | `imageSlowLoad` | 5sec/off | `frontend` |
 | 4 | `paymentFailure` | 25%/off | `payment` |
-| 5 | `cartFailure` | on/off | `cart` |
-| 6 | `recommendationCacheFailure` | on/off | `recommendation` |
+| 5 | `recommendationCacheFailure` | on/off | `recommendation` |
+
+**Additional Scenarios (additional-scenarios/):**
+
+| Incident | Feature Flag | Flag Value | Service to Restart |
+|----------|--------------|------------|-------------------|
+| 6 | `cartFailure` | on/off | `cart` |
 | 7 | `adHighCpu` | on/off | `ad` |
 | 8 | `kafkaQueueProblems` | on/off | `kafka` |
 | 9 | `failedReadinessProbe` | on/off | `cart` |

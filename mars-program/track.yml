@@ -28,4 +28,4 @@ lab_config:
   default_layout: AssignmentLeft
   default_layout_sidebar_size: 50
 checksum: "4159686904198084064"
-enhanced_loading: true
+enhanced_loading: false

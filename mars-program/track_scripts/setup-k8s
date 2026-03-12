@@ -145,19 +145,71 @@ in_otel_call && /"\$IS_OPENSHIFT_CLUSTER"/ {
 chmod +x "${INSTALL_SCRIPT}"
 echo "✅ install-k8s.sh patched!"
 
-# --- PATCH OPENTELEMETRY-DEMO.YAML TO INCREASE LOAD ---
-echo "Patching opentelemetry-demo.yaml to increase load to 50 users with 8GB memory..."
+# --- PATCH OPENTELEMETRY-DEMO.YAML TO INCREASE LOAD AND PATCH LOCUSTFILE ---
+echo "Patching opentelemetry-demo.yaml to increase load to 50 users with 8GB memory and patch locustfile..."
 DEMO_VALUES_FILE="${WORK_DIR}/opentelemetry-demo/newrelic/k8s/helm/opentelemetry-demo.yaml"
-sed -i.bak '/^# Disable non-NR components$/i\
-  load-generator:\
-    resources:\
-      limits:\
-        memory: 8Gi\
-    envOverrides:\
-      - name: LOCUST_USERS\
-        value: "50"\
-' "${DEMO_VALUES_FILE}"
-echo "✅ opentelemetry-demo.yaml patched to use 50 locust users with 8GB memory limit!"
+
+# Create a temporary file with the complete load-generator configuration
+cat > /tmp/load-generator-patch.yaml <<'LOADGEN_EOF'
+  load-generator:
+    resources:
+      limits:
+        memory: 8Gi
+    envOverrides:
+      - name: LOCUST_USERS
+        value: "50"
+    additionalVolumes:
+      - name: patched-locustfile
+        emptyDir: {}
+    additionalVolumeMounts:
+      - name: patched-locustfile
+        mountPath: /usr/src/app/locustfile.py
+        subPath: locustfile.py
+    initContainers:
+      - name: patch-locustfile
+        image: ghcr.io/open-telemetry/demo:2.0.2-load-generator
+        command:
+          - python
+          - -c
+          - |
+            with open('/usr/src/app/locustfile.py', 'r') as f:
+                content = f.read()
+
+            # Add image loading wait before clicking on "Roof Binoculars"
+            # Wait for the Roof Binoculars image request to complete
+            # The original line has 16 spaces of indentation
+            image_wait = '                # Wait for Roof Binoculars image to load\n'
+            image_wait += '                await page.wait_for_event(\n'
+            image_wait += '                    "response",\n'
+            image_wait += "                    predicate=lambda r: '/images/products/RoofBinoculars.jpg' in r.url and r.status == 200,\n"
+            image_wait += '                    timeout=15000\n'
+            image_wait += '                )\n'
+
+            content = content.replace(
+                '                await page.click(\'p:has-text("Roof Binoculars")\', wait_until="domcontentloaded")',
+                image_wait + '                await page.click(\'p:has-text("Roof Binoculars")\', wait_until="domcontentloaded")'
+            )
+
+            # Print patched sections to stdout for validation
+            print("=== PATCHED SECTIONS ===")
+            for i, line in enumerate(content.split('\n'), 1):
+                if 'wait_for_event' in line or 'Roof Binoculars' in line:
+                    print(f"{i}: {line}")
+
+            with open('/patched/locustfile.py', 'w') as f:
+                f.write(content)
+        volumeMounts:
+          - name: patched-locustfile
+            mountPath: /patched
+LOADGEN_EOF
+
+# Insert the load-generator configuration before "# Disable non-NR components"
+sed -i.bak '/^# Disable non-NR components$/e cat /tmp/load-generator-patch.yaml' "${DEMO_VALUES_FILE}"
+
+# Clean up temporary file
+rm -f /tmp/load-generator-patch.yaml
+
+echo "✅ opentelemetry-demo.yaml patched to use 50 locust users with 8GB memory limit and locustfile patching!"
 
 # --- DEPLOY DEMO TO KUBERNETES ---
 echo "Deploying OpenTelemetry Demo..."

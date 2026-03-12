@@ -16,6 +16,10 @@ Well done in setting up your Workload, this will be a memorable Game Day!
 
 Feel free to check the entities in your workload, perhaps group by `Entity Type`, and in general explore the setup to get familiar with it.
 
+To give you an idea of what to expect, see this example workload after some incidents were triggered!
+
+<img src="../assets/workload-status.png" style="max-width: 800px; display: block; margin: 0 auto;" alt="Workload entities">
+
 ## ⛔ Wait Before Continuing
 
 **Wait** for your Game Manager's instructions before hitting _"Next"_ below.

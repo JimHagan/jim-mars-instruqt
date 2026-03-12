@@ -42,45 +42,49 @@ The Astronomy Shop is a microservices application:
 - **Load Generator:** Simulates real customer traffic
 - **Full Stack Observability:** All services instrumented with OpenTelemetry
 
+The following service diagram gives you an overall idea of the services involved.
+
+<img src="../assets/service-diagram.png" style="max-width: 800px; display: block; margin: 0 auto;" alt="Service Diagram">
+
 ## 📋 Mission 1: Create A Workload As Your Team Name
 
 Before responding to incidents, you need to create a **Workload** in New Relic.
 This groups all your entities together, making it easy to see the health of your entire system at a glance during incident response.
-We'll use the name of the workload to refer to your team name in later stages.
+We'll use the name of the workload to refer to your team name for scoring, so make it fun!
 
-Don't worry about time in this first mission, it won't count against your SLOs.
+**⏳ Don't worry about time in this first mission**, it won't count against your score.
 The most important thing is that you come up with a cool team name!
 
 ### Step 1: Log in to New Relic
-1. Your Game Manager has already given you credentials to access New Relic. You can share those with your teammates.
-2. Log in to [New Relic](https://one.newrelic.com) using the credentials provided:
-    - Email: `[[ Instruqt-Var key="INSTRUCTOR_EMAIL_HANDLE" hostname="k8s" ]]+[[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]@[[ Instruqt-Var key="INSTRUCTOR_EMAIL_DOMAIN" hostname="k8s" ]]`
-    - Password: `[[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]`
+Log in to [New Relic](https://one.newrelic.com) using the following credentials:
+
+- Email: `[[ Instruqt-Var key="INSTRUCTOR_EMAIL_HANDLE" hostname="k8s" ]]+[[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]@[[ Instruqt-Var key="INSTRUCTOR_EMAIL_DOMAIN" hostname="k8s" ]]`
+- Password: `[[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]`
 
 ### Step 2: Create Your Workload
-Have on person in your team do the following:
+Have **one person** in your team do the following:
 
-1. Go to **Workloads** (use Quick Find or press Ctrl/Cmd + K and search for "Workloads")
+1. Go to **Workloads** (use Quick Find or press _Ctrl/Cmd + K_ and search for _"Workloads"_)
 2. Click **Create a workload**
-3. **Name:** Enter your team name (e.g., "Alpha Team", "Incident Command & Conquer", "Systems Are All Down")
+3. Choose a **Standard workload**
+4. **Git it a name:** Enter your team name (e.g., "Lord of the Pings", "Incident Command & Conquer", "Systems Are All Down")
    - This is your team identity - make it memorable! 🎯
-4. Choose a **Standard workload**.
-5. **Select your account** in the dropdown and give it a name!
+5. **Use a dynamic query** to add current and future entities to your workload:
+   - In the **Select entities** section, click the `+` on the filter bar
+   - Add a filter by choosing either:
+      - **Option A:** `tags.account` = your account name (i.e., `[[ Instruqt-Var key="NR_SUBACCOUNT_NAME_PREFIX" hostname="k8s" ]][[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]`)
+      - **Option B:** `tags.accountId` = your account ID
+   - Select your account name or enter your account ID
+   - Click **+ Add this query** to add this query to your workload (see image below)
+6. **Hit _"Create a workload"_**
 
-### Step 3: Add Entities to Your Workload
-Now add ALL entities from your account using a dynamic query:
+Your workload selection should look something like this (don't worry about the number of entities selected, we want them all!):
 
-1. In the **Select entities** section, click the `+` button
-2. Add a filter by choosing either:
-   - **Option A:** `tags.account` = your account name (i.e., `[[ Instruqt-Var key="NR_SUBACCOUNT_NAME_PREFIX" hostname="k8s" ]][[ Instruqt-Var key="SANDBOX_ID" hostname="k8s" ]]`)
-   - **Option B:** `tags.accountId` = your account ID
-3. Select your account name or enter your account ID
-4. Click **Add** to include all entities
-5. Click **Create workload** at the bottom
+<img src="../assets/workload-entities.png" style="max-width: 800px; display: block; margin: 0 auto;" alt="Workload entities">
 
-### Step 4: Verify Your Setup
-1. Go to the **Check** terminal tab
-2. Enter your workload name exactly as you created it (case-sensitive)
+### Step 3: Verify Your Setup
+1. Go to the **Check** terminal tab here in Instruqt (on the right-hand side)
+2. Enter your workload name exactly as you created it
 3. Click the **Check** button in Instruqt
 4. If validation fails, you can re-enter your workload name
 

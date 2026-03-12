@@ -7,7 +7,7 @@ teaser: How to debug a cart service failure using APM and distributed tracing
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Cart Service Failure

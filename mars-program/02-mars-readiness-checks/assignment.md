@@ -7,7 +7,7 @@ teaser: Make sure everyone is ready to start the game!
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 ## 🚀 Congratulations!

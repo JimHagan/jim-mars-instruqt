@@ -7,7 +7,7 @@ teaser: How to debug a payment connectivity failure like a pro
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Payment Service Unreachable

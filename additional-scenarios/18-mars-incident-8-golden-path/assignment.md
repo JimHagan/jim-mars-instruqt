@@ -7,7 +7,7 @@ teaser: How to diagnose Kafka consumer lag using messaging metrics and trace gap
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Kafka Queue Problems

@@ -8,7 +8,7 @@ teaser: How to detect and diagnose a memory leak using infrastructure and runtim
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Recommendation Cache Memory Leak

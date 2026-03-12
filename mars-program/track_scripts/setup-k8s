@@ -190,12 +190,6 @@ cat > /tmp/load-generator-patch.yaml <<'LOADGEN_EOF'
                 image_wait + '                await page.click(\'p:has-text("Roof Binoculars")\', wait_until="domcontentloaded")'
             )
 
-            # Print patched sections to stdout for validation
-            print("=== PATCHED SECTIONS ===")
-            for i, line in enumerate(content.split('\n'), 1):
-                if 'wait_for_event' in line or 'Roof Binoculars' in line:
-                    print(f"{i}: {line}")
-
             with open('/patched/locustfile.py', 'w') as f:
                 f.write(content)
         volumeMounts:

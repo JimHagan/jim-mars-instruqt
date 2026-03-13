@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-1-failure
-id: hyun1dpgehs4
+id: 9tzxyporxwx2
 type: challenge
 title: 'Incident 1: Failure'
 teaser: Product failures observed
 tabs:
-- id: wcivltpnoqh8
+- id: 0fauemzw7uty
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: dxornyimeuum
+- id: f9pbngi7pgdg
   title: Astronomy Shop
   type: service
   hostname: k8s

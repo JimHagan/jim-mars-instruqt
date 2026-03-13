@@ -1,6 +1,6 @@
 ---
 slug: mars-readiness-checks
-id: p3hht2gugwgx
+id: cp3p8al1ykqm
 type: challenge
 title: Readiness Checks
 teaser: Make sure everyone is ready to start the game!

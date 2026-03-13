@@ -1,6 +1,6 @@
 ---
 slug: mars-outro
-id: qeuopdfsh5bk
+id: oue2nw4lcwoi
 type: challenge
 title: Final Score!
 teaser: Let's wait and compute all the scores to find the winner!

@@ -1,6 +1,6 @@
 ---
 slug: mars-incident-1-golden-path
-id: 6gzl5hl9unbm
+id: bdqxvmlvblxc
 type: challenge
 title: 'Incident 1: Golden Path'
 teaser: How to debug a product catalog error spike like a pro

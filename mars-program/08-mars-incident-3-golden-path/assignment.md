@@ -1,6 +1,6 @@
 ---
 slug: mars-incident-3-golden-path
-id: eotlugihvlwk
+id: ts5pufysugc4
 type: challenge
 title: 'Incident 3: Golden Path'
 teaser: How to debug an image latency spike using browser and APM signals

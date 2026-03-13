@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-3-failure
-id: y6xxocxsyopf
+id: yh7b8sjg4tdm
 type: challenge
 title: 'Incident 3: Failure'
 teaser: The Homepage Just Isn't Right
 tabs:
-- id: etdymdhv15kg
+- id: utduppkaef3k
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: vefkkpndy0nx
+- id: cmktolfaqkme
   title: Astronomy Shop
   type: service
   hostname: k8s

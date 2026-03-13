@@ -1,6 +1,6 @@
 ---
 slug: mars-incident-5-golden-path
-id: lqpd1qss7gfr
+id: 07xcwhcytrjh
 type: challenge
 title: 'Incident 5: Golden Path'
 teaser: How to detect and diagnose a memory leak using infrastructure and runtime

@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-2-failure
-id: l9hhxsicfkgf
+id: vmevnustr6yx
 type: challenge
 title: 'Incident 2: Failure'
 teaser: Checkouts are failing — no one can complete a purchase
 tabs:
-- id: pbbntcr3meqw
+- id: 8cycfvyvcez9
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: t1oyak3sxy9k
+- id: eh7r0ncyts9j
   title: Astronomy Shop
   type: service
   hostname: k8s

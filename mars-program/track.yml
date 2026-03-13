@@ -1,5 +1,5 @@
 slug: mars-program
-id: ogltrds04ckt
+id: gklaixy52clc
 title: M.A.R.S. Program
 teaser: Level up your observability maturity
 description: ""
@@ -27,5 +27,5 @@ lab_config:
   hideStopButton: true
   default_layout: AssignmentLeft
   default_layout_sidebar_size: 50
-checksum: "5114949473187724979"
+checksum: "14925386749323315904"
 enhanced_loading: false

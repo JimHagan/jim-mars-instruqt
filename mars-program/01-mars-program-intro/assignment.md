@@ -1,16 +1,16 @@
 ---
 slug: mars-program-intro
-id: 8onxikf0rfac
+id: vlnb6ogtuylb
 type: challenge
 title: Intro
 teaser: Create your workload and get ready for incident response
 tabs:
-- id: 4wssaltsxrid
+- id: vtxttpxgo2gr
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: jyedweaymtba
+- id: q19pyise8n3o
   title: Astronomy Shop
   type: service
   hostname: k8s

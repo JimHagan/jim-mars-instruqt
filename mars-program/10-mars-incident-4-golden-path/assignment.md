@@ -1,6 +1,6 @@
 ---
 slug: mars-incident-4-golden-path
-id: hqmchgttvfoj
+id: q1muwb6b0zye
 type: challenge
 title: 'Incident 4: Golden Path'
 teaser: How to debug intermittent payment failures using traces and Errors Inbox

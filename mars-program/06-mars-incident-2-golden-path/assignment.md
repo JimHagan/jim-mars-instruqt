@@ -1,6 +1,6 @@
 ---
 slug: mars-incident-2-golden-path
-id: l7ccz0h12l9y
+id: dlgnripjytyj
 type: challenge
 title: 'Incident 2: Golden Path'
 teaser: How to debug a payment connectivity failure like a pro

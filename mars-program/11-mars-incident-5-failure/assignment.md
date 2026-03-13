@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-5-failure
-id: xqutxd0jgsmt
+id: 3eo0j9k2eo9n
 type: challenge
 title: 'Incident 5: Failure'
 teaser: The recommendation service is consuming ever-growing memory
 tabs:
-- id: uc8sc5plcjn7
+- id: uafwi6sexfb7
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: 2bkvpym14tgm
+- id: ojuxuxvnrgl4
   title: Astronomy Shop
   type: service
   hostname: k8s

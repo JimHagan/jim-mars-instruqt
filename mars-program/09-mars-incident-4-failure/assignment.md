@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-4-failure
-id: rg7h8x1ythy9
+id: 1hpiyuerfoi7
 type: challenge
 title: 'Incident 4: Failure'
 teaser: Some orders are going through, some aren't
 tabs:
-- id: rxlwz6w4wgkg
+- id: txdrnbxnjvtm
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: 5dgenglsxhny
+- id: pasimdme17il
   title: Astronomy Shop
   type: service
   hostname: k8s

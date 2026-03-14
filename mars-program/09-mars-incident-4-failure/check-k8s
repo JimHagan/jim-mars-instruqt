@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# Expected answers: affected service; failing operation; failure pattern
+# Expected answers (lowercase for case-insensitive comparison)
 EXPECTED_SERVICE="paymentservice"
-EXPECTED_ISSUE_TYPE="charge"
-EXPECTED_ROOT_CAUSE="intermittent"
+ERROR_RATE_MIN=20
+ERROR_RATE_MAX=30
+EXPECTED_TRANSACTION="charge"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("payment service" "payment-service" "payment")
-ALT_ISSUE_ANSWERS=("chargerequest" "charge request" "payment charge" "chargeservice")
-ALT_ROOT_CAUSE_ANSWERS=("random" "intermittent failures" "partial failures" "random failures" "intermittent errors" "intermittent payment" "random payment failure")
+ALT_SERVICE_ANSWERS=("payment service" "payment-service" "payment" "payments" "paymentservice")
+ALT_TRANSACTION_ANSWERS=("charge failed" "chargecard" "charge card" "payment charge" "charging" "chargecard rpc" "grpc.oteldemo.PaymentService/Charge")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {
@@ -42,6 +42,32 @@ check_answer() {
     return 1
 }
 
+# Check if an error rate answer falls within the acceptable range (20–30%).
+# Accepts: plain integers (25), decimals (24.8), % suffix (25%, ~25%),
+# and prose like "about 25%" or "approximately 25".
+check_error_rate_range() {
+    local raw
+    raw=$(echo "$1" | tr '[:upper:]' '[:lower:]' | xargs)
+
+    # Strip leading ~ and common prose prefixes
+    raw="${raw#\~}"
+    raw=$(echo "$raw" | sed 's/^about //; s/^approximately //; s/^around //')
+
+    # Extract the leading numeric value (integer or decimal)
+    local num
+    num=$(echo "$raw" | grep -oE '^[0-9]+(\.[0-9]+)?')
+
+    if [[ -z "$num" ]]; then
+        return 1
+    fi
+
+    # Round to nearest integer via bc
+    local rounded
+    rounded=$(echo "($num + 0.5) / 1" | bc)
+
+    (( rounded >= ERROR_RATE_MIN && rounded <= ERROR_RATE_MAX ))
+}
+
 # Check if answer file exists
 ANSWER_FILE="/tmp/answers.json"
 if [[ ! -f "$ANSWER_FILE" ]]; then
@@ -49,7 +75,7 @@ if [[ ! -f "$ANSWER_FILE" ]]; then
     exit 1
 fi
 
-# Read answer from JSON file (format: {"answer": "service; issue; cause"})
+# Read answer from JSON file (format: {"answer": "part1; part2; part3"})
 FULL_ANSWER=$(jq -r '.answer // empty' "$ANSWER_FILE")
 
 # Check if answer is empty
@@ -63,49 +89,49 @@ IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
 
 # Check if we have exactly 3 parts
 if [[ ${#ANSWERS[@]} -ne 3 ]]; then
-    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: service; issue type; root cause"
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: failing service; approximate error rate; failing transaction type"
     exit 1
 fi
 
 # Extract and trim each answer
 SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
-ISSUE_TYPE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
-ROOT_CAUSE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+ERROR_RATE_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
+TRANSACTION_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
 
 # Check if any part is empty
-if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]] || [[ -z "$ROOT_CAUSE_ANSWER" ]]; then
-    fail-message "❌ All three parts must be filled. Format: service; issue type; root cause"
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$ERROR_RATE_ANSWER" ]] || [[ -z "$TRANSACTION_ANSWER" ]]; then
+    fail-message "❌ All three parts must be filled. Format: failing service; approximate error rate; failing transaction type"
     exit 1
 fi
 
 # Validate each answer
 SERVICE_CORRECT=false
-ISSUE_TYPE_CORRECT=false
-ROOT_CAUSE_CORRECT=false
+ERROR_RATE_CORRECT=false
+TRANSACTION_CORRECT=false
 
 if check_answer "$SERVICE_ANSWER" "$EXPECTED_SERVICE" "${ALT_SERVICE_ANSWERS[@]}"; then
     SERVICE_CORRECT=true
 fi
 
-if check_answer "$ISSUE_TYPE_ANSWER" "$EXPECTED_ISSUE_TYPE" "${ALT_ISSUE_ANSWERS[@]}"; then
-    ISSUE_TYPE_CORRECT=true
+if check_error_rate_range "$ERROR_RATE_ANSWER"; then
+    ERROR_RATE_CORRECT=true
 fi
 
-if check_answer "$ROOT_CAUSE_ANSWER" "$EXPECTED_ROOT_CAUSE" "${ALT_ROOT_CAUSE_ANSWERS[@]}"; then
-    ROOT_CAUSE_CORRECT=true
+if check_answer "$TRANSACTION_ANSWER" "$EXPECTED_TRANSACTION" "${ALT_TRANSACTION_ANSWERS[@]}"; then
+    TRANSACTION_CORRECT=true
 fi
 
 # Final result
-if $SERVICE_CORRECT && $ISSUE_TYPE_CORRECT && $ROOT_CAUSE_CORRECT; then
+if $SERVICE_CORRECT && $ERROR_RATE_CORRECT && $TRANSACTION_CORRECT; then
     echo "✅ All answers correct! Incident resolved."
-    echo "🎯 Root cause: $SERVICE_ANSWER experiencing $ISSUE_TYPE_ANSWER due to $ROOT_CAUSE_ANSWER"
+    echo "🎯 $SERVICE_ANSWER is failing ~$ERROR_RATE_ANSWER of $TRANSACTION_ANSWER transactions"
     exit 0
 else
     CORRECT_COUNT=0
     $SERVICE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $ISSUE_TYPE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
-    $ROOT_CAUSE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $ERROR_RATE_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
+    $TRANSACTION_CORRECT && CORRECT_COUNT=$((CORRECT_COUNT + 1))
 
-    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again."
+    fail-message "❌ Not all answers are correct ($CORRECT_COUNT/3). Check your investigation and try again. Format: failing service; approximate error rate; failing transaction type"
     exit 1
 fi

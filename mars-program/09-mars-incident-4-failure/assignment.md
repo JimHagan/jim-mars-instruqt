@@ -1,16 +1,16 @@
 ---
 slug: mars-incident-4-failure
-id: rg7h8x1ythy9
+id: 1hpiyuerfoi7
 type: challenge
 title: 'Incident 4: Failure'
-teaser: Some orders are going through, some aren't — intermittent payment failures
+teaser: Some orders are going through, some aren't
 tabs:
-- id: rxlwz6w4wgkg
+- id: txdrnbxnjvtm
   title: Check
   type: terminal
   hostname: k8s
   cmd: /tmp/generic_prompt
-- id: 5dgenglsxhny
+- id: pasimdme17il
   title: Astronomy Shop
   type: service
   hostname: k8s
@@ -33,65 +33,87 @@ This is trickier than a total outage. Customers are having inconsistent experien
 
 Use New Relic to investigate and identify:
 
-1. **Which service** is failing?
-2. **What type of issue** is affecting it?
-3. **What is the root cause** of the problem?
+1. **What is the name of the service** that is intermittently failing?
+2. **What is the approximate error rate** observed in APM?
+3. **What is the name of the failing transaction?**
 
 ## 🔍 Investigation Guide
 
-### Step 1: Reproduce the Problem
-Open the **Astronomy Shop** tab and try to complete a purchase:
-1. Add an item to your cart
-2. Click **Place Order**
-3. Try this **multiple times** — what do you notice?
-   - Does it fail every time, or just sometimes?
-   - What error message do you see when it fails?
+Start broad, then narrow down.  As always check your configured workloads to get awareness of impacted entities:
 
-The intermittent nature is an important clue.
 
-### Step 2: Check APM Error Rate
+### Step 1: Dig into APM
 1. Go to **APM & Services**
-2. Look for services with elevated **error rates** (but less than 100%)
-3. Which service is showing intermittent errors?
-4. What is the approximate error rate? (10%? 25%? 50%?)
+2. Look for services with elevated **error rates** (check the error % column) — **note the approximate error percentage**
+3. Click into the affected service and examine:
+   - The **Errors** tab — look at the error messages and stack traces
+   - **Distributed Tracing** — find traces with errors and examine the failing span
 
-### Step 3: Look at Errors Inbox
-1. Go to **Errors Inbox** and filter by the affected service
-2. What error message is appearing?
-3. Look at the **occurrence count** and **frequency** — is it random or patterned?
+### Step 2: Dig into Errors Inbox
+1. Go to **Errors Inbox**
+2. Look for unique error patterns
 
-### Step 4: Dig into Distributed Traces
-In APM, find the affected service and go to **Distributed Tracing**:
-1. Filter for traces containing errors
-2. Compare a **failing trace** with a **successful trace** side by side
-3. Which specific operation is failing?
-4. Look at span attributes on the failing span — is there any attribute (like `app.payment.amount`) that differs between successful and failed transactions?
+### Step 3: Look at application logs
+1. Go to **Logs**
+2. Look for unique log patterns related to all or to specific services
 
-### Step 5: Identify the Root Cause
-Based on your investigation:
-- Is the failure truly random, or does it correlate with something (transaction amount, product type, user)?
-- What does the error message tell you about what's happening in the payment service?
-- What is causing the `paymentservice` to intermittently reject charges?
+### Step 4: Look at distributed tracing
+1. Find anomalous spans related to services you suspect may be at fault
+2. Capture error messages, logs or other details.
+
 
 ## 📝 Submit Your Answers
 
-Once you've identified the root cause, go to the **Check** terminal and enter:
+Once you've identified the root cause, go to the **Check** terminal and enter your answers:
+
+**Answer Format:**
 
 ```
-affected service; failing operation; failure pattern
+failing service; approximate error rate; failing transaction type
 ```
 
-**Example:** `paymentservice; charge; intermittent`
+**Example:** `frontend; 5%; processItem`
 
 **Format hints:**
-- Affected service: which service is generating errors?
-- Failing operation: what is the name of the specific operation or span that fails? (check Distributed Tracing — look at the span name on the failing traces)
-- Failure pattern: how would you describe the failure behavior? Is it every request, or something else?
+- Failing service: use the exact name as it appears in New Relic APM (e.g., `frontend`)
+- Approximate error rate: observe the error rate in APM and round to the nearest 5% (e.g., `5%`)
+- Failing transaction type: what operation is erroring? — look in the Errors tab or Distributed Tracing span name (e.g., `processItem`)
 
-Click **Check** to validate. You can re-enter if incorrect.
+Click the **Check** button to validate. You can re-enter if incorrect.
 
 ## ⏱️ Notes
 
-- You have **30 minutes** for this incident
-- If stuck after 15 minutes, ask your Game Manager for a hint
-- Hint: look at the **payment service itself**, not checkout — the error is generated inside payment 🚀
+- You have **15 minutes** for this incident
+- If stuck after 10 minutes, ask your Game Manager for a hint
+- Your SLO burn rate is ticking — move fast! 🚀
+
+<!--
+
+## Gotchas to Watch in Beta Testing
+
+- This is the first incident where teams must observe a PATTERN, not a
+  single event. Watch for groups who try checkout once, it happens to
+  succeed, and they report "no incident." Game manager hint: "The error
+  is intermittent — try at least 5 times."
+
+- The error rate fluctuates over time. A student who checks APM in a
+  "lucky" window may see a lower rate than the configured ~25%. The check
+  script needs to accept a range (e.g., 15%–35%) not just "25%".
+
+- Students who did Incident 2 will recognize "paymentservice" immediately
+  and may jump straight to that service — which is actually correct here!
+  But the reason is different (internal error vs. connection refused).
+  Watch for teams who get the right answer for the wrong reason and then
+  struggle to explain WHY in a debrief.
+
+- The transaction name ("ChargeRequest", "Charge", etc.) may differ
+  between the OTel span name and the APM transaction name. Verify the
+  exact string that appears in APM before the beta and ensure the check
+  script matches it exactly. Also handle case variants.
+
+- Teams fatigued from Incidents 1–3 may rush this one and miss the
+  "intermittent" nuance. This is arguably the most analytically
+  challenging incident — game managers should be ready to slow teams
+  down and prompt reflection.
+=============================================================================
+-->

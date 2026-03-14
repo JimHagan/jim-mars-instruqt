@@ -1,13 +1,13 @@
 ---
 slug: mars-incident-4-golden-path
-id: hqmchgttvfoj
+id: q1muwb6b0zye
 type: challenge
 title: 'Incident 4: Golden Path'
 teaser: How to debug intermittent payment failures using traces and Errors Inbox
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
-enhanced_loading: null
+enhanced_loading: true
 ---
 
 # 🏆 Golden Path: Payment Service Failure
@@ -16,56 +16,61 @@ enhanced_loading: null
 
 The `paymentFailure` feature flag was enabled, causing the **Payment service** to randomly fail a percentage of charge requests. Unlike a total outage, this was an **intermittent failure** — some transactions succeeded while others failed, making it harder to diagnose because the system appeared to be "working" some of the time.
 
+## Error Rate Chart
+
+![Payment Failure Error Rate](../assets/random-payment-failure-chart.png)
+
 ---
 
 ## The Ideal Debugging Path
 
-### 1. Reproduce the Intermittent Behavior (2 minutes)
+### 1. Alert Fires: High Error Rate Detected (30 seconds)
 
-Open the Astronomy Shop and attempt **multiple** checkouts. On some attempts you'd get:
-```
-"An error occurred while processing your payment"
-```
-On others, the order goes through normally.
+An alert fires for a high error rate. Opening your **Workload** you'd see multiple services in a degraded state — including `checkout` and `paymentservice`.
 
-**Why multiple attempts matter:** Intermittent failures require you to observe a pattern, not just a single failure. If you assume it's a one-time blip after one failure, you'll miss it. If you test repeatedly, you confirm it's reproducible and frequent.
+`checkout` is the entry point for the payment flow, so it's expected to show errors when anything downstream fails. The question is: **which service is the actual source?**
+
+**Why this is the right first move:** Workloads give you a single-pane-of-glass view of all affected entities. Rather than checking services one by one, you immediately see the blast radius and can start narrowing toward the root cause.
 
 ---
 
-### 2. Check APM: Spot the Elevated Error Rate (1 minute)
+### 2. Trace Downstream: Find the Furthest Affected Service (2 minutes)
 
-Go to **APM & Services** and look at the error rate column.
+Navigate to **APM & Services** and look at the error rate column.
 
 You'd see:
-- `paymentservice` showing an error rate of ~20–30% (not 0%, not 100%)
-- `checkoutservice` may also show elevated errors — but the real error is generated *inside* `paymentservice`, not checkout
+- `checkout` showing elevated errors — but checkout is the *caller*, not the source
+- `paymentservice` also showing elevated errors — and it's the furthest downstream service in the payment chain
 
-**Key insight:** When error rate is non-zero but not 100%, you're dealing with an intermittent fault. The service is still processing most requests — only a fraction fail.
+**Why furthest downstream matters:** In a chain of service calls, errors propagate upstream. The service closest to the root cause is the one furthest downstream that is *also* showing errors. `paymentservice` receives calls from `checkout` — if `paymentservice` is failing internally, `checkout` will fail too. Start your deep investigation at `paymentservice`.
 
 ---
 
-### 3. Errors Inbox: Identify the Pattern (2 minutes)
+### 3. Characterize the Error Rate (1 minute)
+
+In **APM → paymentservice → Summary**, observe the error rate.
+
+You'd see:
+- An error rate in the 20–30% range — neither 0% nor 100%
+- Throughput looks normal — the service is receiving and processing requests
+
+**Key insight:** A non-zero, sub-100% error rate means an intermittent fault, not a total outage. The service is reachable and handling most requests — only a fraction fail. This rules out connectivity issues and points toward something inside the service logic.
+
+---
+
+### 4. Errors Inbox: Confirm the Pattern (2 minutes)
 
 Go to **Errors Inbox** and filter by `paymentservice`.
 
-You'd find an error group with a message like:
-```
-Payment processing failed: ChargeRequest declined
-```
-or
-```
-Error: PaymentFailure flag is enabled — charge rejected
-```
+You'd find a single error group with a consistent message. Look at the **occurrence graph**:
+- Errors are occurring steadily over time — not a single burst
+- The frequency matches the observed APM error rate
 
-Look at the **occurrence graph** in Errors Inbox. You'd notice:
-- Errors are occurring consistently over time (not a single burst)
-- The error rate matches the flag's configured failure percentage
-
-**Why Errors Inbox is ideal here:** It groups all the intermittent failures into one error group, showing you frequency and trend — instead of hunting through hundreds of individual trace records.
+**Why Errors Inbox is ideal here:** It collapses all the intermittent failures into one error group, showing you frequency and trend at a glance — instead of hunting through individual trace records.
 
 ---
 
-### 4. Distributed Tracing: Compare Success vs Failure (2 minutes)
+### 5. Distributed Tracing: Confirm Location and Randomness (2 minutes)
 
 In **APM → paymentservice → Distributed Tracing**, filter for traces with errors.
 
@@ -73,46 +78,26 @@ Open a **failing trace** and a **successful trace** side by side:
 
 **Failing trace:**
 ```
-checkoutservice  →  paymentservice [ERROR]
-                        └── ChargeRequest
-                              status: Error
-                              error.message: "Payment declined"
-                              app.payment.amount: $42.00
+checkout  →  paymentservice [ERROR]
+                 └── ChargeRequest
+                       status: Error
+                       error.message: "Payment declined"
+                       app.payment.amount: $42.00
 ```
 
 **Successful trace:**
 ```
-checkoutservice  →  paymentservice [OK]
-                        └── ChargeRequest
-                              status: OK
-                              app.payment.amount: $18.50
+checkout  →  paymentservice [OK]
+                 └── ChargeRequest
+                       status: OK
+                       app.payment.amount: $18.50
 ```
 
 Comparing the two, you'd notice:
-- The failing span is within `paymentservice` itself — not a connectivity issue
-- The `paymentservice` *receives* the request (unlike Incident 2 where it received no traffic)
-- The error is generated inside the payment processing logic
+- The failing span is inside `paymentservice` itself — not a connectivity issue from `checkout`
+- The `app.payment.amount` attribute differs between traces, but failures don't correlate to any particular amount — the pattern appears random
 
-**The key difference from Incident 2:** In that incident, `paymentservice` showed zero traffic. Here it shows traffic with intermittent errors — the service is reachable, but something inside it is failing.
-
----
-
-### 5. Span Attributes: Look for Correlations (1 minute)
-
-Examine the `app.payment.amount` attribute across multiple failing vs successful traces.
-
-In the real `paymentFailure` flag scenario, the failure is **random** — not correlated to amount. This distinguishes it from a business-logic bug (which would correlate with specific amounts or products).
-
-If you suspected a business logic issue, you could use **NRQL** to query:
-
-```sql
-SELECT count(*), average(app.payment.amount)
-FROM Span
-WHERE service.name = 'paymentservice'
-  AND otel.status_code = 'ERROR'
-FACET error.message
-SINCE 30 minutes ago
-```
+**Key insight:** The error is generated inside `paymentservice`'s own processing logic. The service is reachable and receiving requests — something inside it is intermittently rejecting charges.
 
 ---
 
@@ -120,11 +105,11 @@ SINCE 30 minutes ago
 
 | Step | Tool | Finding |
 |------|------|---------|
-| Reproduce | Astronomy Shop | Checkout fails ~25% of attempts |
-| Service triage | APM Summary | `paymentservice` ~25% error rate |
-| Error grouping | Errors Inbox | Single error type, consistent frequency |
-| Root cause | Distributed Tracing | Error generated inside paymentservice.ChargeRequest |
-| Pattern analysis | Span attributes | Failures are random, not correlated to amount |
+| Alert triage | Workload | `checkout` and `paymentservice` both degraded |
+| Find root service | APM Summary | `paymentservice` is furthest downstream with errors |
+| Characterize rate | APM Error % | ~20–30% error rate — intermittent, not total outage |
+| Confirm pattern | Errors Inbox | Single error group, consistent frequency over time |
+| Confirm location | Distributed Tracing | Error inside `paymentservice.ChargeRequest`, pattern is random |
 
 **Total time to root cause: ~5 minutes**
 
@@ -132,8 +117,23 @@ SINCE 30 minutes ago
 
 ## Key Takeaways
 
-- **Intermittent ≠ coincidence.** A consistent ~25% error rate means a systematic issue, not random bad luck. Reproduce it multiple times to confirm.
-- **Error location matters.** Error in `paymentservice` spans = the service is reachable and processing requests, but failing internally. This is different from connection errors in the caller's spans (Incident 2).
-- **Errors Inbox turns noise into signal.** Instead of reading 1,000 individual traces, Errors Inbox groups them and shows you trend, frequency, and the exact error message immediately.
-- **Trace comparison unlocks insights.** Putting a failing trace next to a successful trace visually highlights exactly what differs — the most efficient way to find correlations.
-- **NRQL for deeper analysis.** When simple trace inspection isn't enough, querying span attributes with NRQL lets you statistically test hypotheses (e.g., "does failure correlate with amount?") at scale.
+- **Start at the alert, then go downstream.** When multiple services are degraded, the root cause is usually the furthest downstream service showing errors — not the first one the alert fires on.
+- **Intermittent ≠ coincidence.** A consistent ~25% error rate means a systematic issue, not random bad luck. Sub-100% error rate is the key signal that rules out a total outage.
+- **Errors Inbox turns noise into signal.** Instead of reading hundreds of individual traces, Errors Inbox groups them and shows you trend and frequency immediately.
+- **Trace comparison unlocks insights.** Putting a failing trace next to a successful trace highlights exactly what differs — the most efficient way to test for correlations.
+- **Error location matters.** An error on `paymentservice`'s own span means the service is reachable and processing requests, but failing internally. This is different from a connection error on the *caller's* span, which would mean the service was unreachable (as seen in Incident 2).
+
+## ⛔ Wait Before Continuing
+
+**Wait** for your Game Manager's instructions before hitting _"Next"_ below.
+
+Remember: **you want to have all info you can before triggering an incident**, otherwise you may miss key details.
+
+<!--
+BETA NOTES — Incident 4 Golden Path
+
+- Verify asset renders: random-payment-failure-chart.png
+- Validate NRQL attribute name (`otel.status_code` vs `span.status_code`) and value case in the live environment
+- Verify `app.payment.amount` is actually emitted in OTel spans; if missing, Step 5's correlation analysis collapses
+- The "~20–30%" error rate here should align to whatever value the check script accepts
+-->

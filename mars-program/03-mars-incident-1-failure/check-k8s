@@ -4,12 +4,12 @@ set -euo pipefail
 # Expected answers (lowercase for case-insensitive comparison)
 EXPECTED_SERVICE="product-catalog"
 EXPECTED_PRODUCT="oljcespc7z"
-EXPECTED_ISSUE_TYPE="high error rate"
+EXPECTED_EXCEPTION_TEXT="Error: Product Catalog Fail Feature Flag Enabled"
 
 # Alternative acceptable answers
-ALT_SERVICE_ANSWERS=("product" "catalog" "product catalog service" "product-catalog-service" "productcatalog")
-ALT_PRODUCT_ANSWERS=("explorascope 20x80 binoculars" "explorascope 20x80" "product oljcespc7z" "explorascope")
-ALT_ISSUE_ANSWERS=("error rate" "errors" "high errors" "error spike" "service errors" "not found" "product not found")
+ALT_SERVICE_ANSWERS=("product" "product-catalog" "catalog" "product catalog" "product-catalog-service" "productcatalog" "ProductCatalog")
+ALT_PRODUCT_ANSWERS=("oljcespc7z" "OLJCESPC7Z" "product oljcespc7z" "product OLJCESPC7Z")
+ALT_EXCEPTION_ANSWERS=("Error: Product Catalog Fail Feature Flag Enabled" "Product Catalog Fail" "Product Catalog Fail Feature Flag Enabled")
 
 # Normalize string: lowercase, trim whitespace
 normalize() {
@@ -63,17 +63,17 @@ IFS=';' read -ra ANSWERS <<< "$FULL_ANSWER"
 
 # Check if we have exactly 3 parts
 if [[ ${#ANSWERS[@]} -ne 3 ]]; then
-    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: affected service; affected product name; issue type"
+    fail-message "❌ Invalid format. Please enter 3 answers separated by semi-colons: affected service; affected product id; exception text"
     exit 1
 fi
 
 # Extract and trim each answer
 SERVICE_ANSWER=$(echo "${ANSWERS[0]}" | xargs)
 PRODUCT_ANSWER=$(echo "${ANSWERS[1]}" | xargs)
-ISSUE_TYPE_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
+EXCEPTION_TEXT_ANSWER=$(echo "${ANSWERS[2]}" | xargs)
 
 # Check if any part is empty
-if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$PRODUCT_ANSWER" ]] || [[ -z "$ISSUE_TYPE_ANSWER" ]]; then
+if [[ -z "$SERVICE_ANSWER" ]] || [[ -z "$PRODUCT_ANSWER" ]] || [[ -z "$EXCEPTION_TEXT_ANSWER" ]]; then
     fail-message "❌ All three parts must be filled. Format: affected service; affected product name; issue type"
     exit 1
 fi
@@ -91,14 +91,14 @@ if check_answer "$PRODUCT_ANSWER" "$EXPECTED_PRODUCT" "${ALT_PRODUCT_ANSWERS[@]}
     PRODUCT_CORRECT=true
 fi
 
-if check_answer "$ISSUE_TYPE_ANSWER" "$EXPECTED_ISSUE_TYPE" "${ALT_ISSUE_ANSWERS[@]}"; then
+if check_answer "$EXCEPTION_TEXT_ANSWER" "$EXPECTED_EXCEPTION_TEXT" "${ALT_EXCEPTION_ANSWERS[@]}"; then
     ISSUE_TYPE_CORRECT=true
 fi
 
 # Final result
 if $SERVICE_CORRECT && $PRODUCT_CORRECT && $ISSUE_TYPE_CORRECT; then
     echo "✅ All answers correct! Incident resolved."
-    echo "🎯 $SERVICE_ANSWER is throwing $ISSUE_TYPE_ANSWER for product: $PRODUCT_ANSWER"
+    echo "🎯 $SERVICE_ANSWER is throwing $EXCEPTION_TEXT_ANSWER for product: $PRODUCT_ANSWER"
     exit 0
 else
     CORRECT_COUNT=0

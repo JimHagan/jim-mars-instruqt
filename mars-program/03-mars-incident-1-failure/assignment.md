@@ -73,7 +73,7 @@ affected service; affected product id; exception text
 
 **Format hints:**
 - Paste the name of the impacted service: use the exact name as it appears in New Relic (e.g., `shippingservice`)
-- Affected product id: the ext product ID or IDs that fail to load
+- Affected product id: the exact product ID or IDs that fail to load
 - Exact `otel.status_description`: paste the exact text from NR (e.g., `Error: database connection timed out`, `Error: file not found` etc.)
 
 Click the **Check** button to validate. You can re-enter if incorrect.

@@ -33,9 +33,9 @@ This is trickier than a total outage. Customers are having inconsistent experien
 
 Use New Relic to investigate and identify:
 
-1. **Paste the name of the service** that is intermittently failing?
+1. **What is the name of the service** that is intermittently failing?
 2. **What is the approximate error rate** observed in APM?
-3. **Past the name of the transaction that** is failing?
+3. **What is the name of the failing transaction?**
 
 ## 🔍 Investigation Guide
 
@@ -62,12 +62,6 @@ Start broad, then narrow down.  As always check your configured workloads to get
 2. Capture error messages, logs or other details.
 
 
-### Step 5: Try to Reproduce
-Open the **Astronomy Shop** tab and browse the product catalog.
-Try clicking on **"Roof Binoculars"** — what happens?
-
-
-
 ## 📝 Submit Your Answers
 
 Once you've identified the root cause, go to the **Check** terminal and enter your answers:
@@ -78,12 +72,12 @@ Once you've identified the root cause, go to the **Check** terminal and enter yo
 failing service; approximate error rate; failing transaction type
 ```
 
-**Example:** `checkoutservice; 10%; PlaceOrder`
+**Example:** `frontend; 5%; processItem`
 
 **Format hints:**
-- Failing service: use the exact name as it appears in New Relic (e.g., `checkoutservice`)
-- Approximate error rate: the % of transactions failing — observe the error rate in APM and round to the nearest 5% (e.g., `10%`)
-- Failing transaction type: what operation is erroring? — look in the Errors tab or Distributed Tracing (e.g., `PlaceOrder`)
+- Failing service: use the exact name as it appears in New Relic APM (e.g., `frontend`)
+- Approximate error rate: observe the error rate in APM and round to the nearest 5% (e.g., `5%`)
+- Failing transaction type: what operation is erroring? — look in the Errors tab or Distributed Tracing span name (e.g., `processItem`)
 
 Click the **Check** button to validate. You can re-enter if incorrect.
 
@@ -92,6 +86,7 @@ Click the **Check** button to validate. You can re-enter if incorrect.
 - You have **15 minutes** for this incident
 - If stuck after 10 minutes, ask your Game Manager for a hint
 - Your SLO burn rate is ticking — move fast! 🚀
+
 
 <!--
 

@@ -3,7 +3,7 @@ slug: mars-incident-4-golden-path
 id: q1muwb6b0zye
 type: challenge
 title: 'Incident 4: Golden Path'
-teaser: How to debug intermittent payment failures using traces and Errors Inbox
+teaser: How to debug intermittent payment failures using alerts, workloads, and APM
 difficulty: ""
 lab_config:
   custom_layout: '{"root":{"children":[{"leaf":{"tabs":["assignment"],"activeTabId":"assignment","size":100}}],"orientation":"Horizontal"}}'
@@ -24,19 +24,29 @@ The `paymentFailure` feature flag was enabled, causing the **Payment service** t
 
 ## The Ideal Debugging Path
 
-### 1. Alert Fires: High Error Rate Detected (30 seconds)
+### 1. Start at the Alert (30 seconds)
 
-An alert fires for a high error rate. Opening your **Workload** you'd see multiple services in a degraded state — including `checkout` and `paymentservice`.
+An alert fires for a high error rate. Rather than jumping straight into a service, start by reading the alert details — it tells you **what condition triggered**, **which entity** is affected, and **when it started**.
 
-`checkout` is the entry point for the payment flow, so it's expected to show errors when anything downstream fails. The question is: **which service is the actual source?**
+This gives you an immediate anchor: you know the scope (error rate, not latency or throughput) and the approximate start time. Every subsequent step should validate or refine what the alert already told you.
 
-**Why this is the right first move:** Workloads give you a single-pane-of-glass view of all affected entities. Rather than checking services one by one, you immediately see the blast radius and can start narrowing toward the root cause.
+**Why this is the right first move:** The alert is the system telling you exactly where to look. Skipping it means you're guessing.
 
 ---
 
-### 2. Trace Downstream: Find the Furthest Affected Service (2 minutes)
+### 2. Open the Workload: See the Blast Radius (1 minute)
 
-Navigate to **APM & Services** and look at the error rate column.
+From the alert, navigate to your team's **Workload**. You'd see multiple services in a degraded state — including `checkout` and `paymentservice`.
+
+`checkout` is the entry point for the payment flow, so it's expected to show errors when anything downstream fails. The question is: **which service is the actual source?**
+
+**Why Workloads matter here:** They give you a single-pane-of-glass view of all affected entities. Rather than checking services one by one, you immediately see the blast radius and can start narrowing toward the root cause.
+
+---
+
+### 3. APM: Find the Root Service (2 minutes)
+
+From the Workload, click into **APM & Services** and look at the error rate column.
 
 You'd see:
 - `checkout` showing elevated errors — but checkout is the *caller*, not the source
@@ -46,7 +56,7 @@ You'd see:
 
 ---
 
-### 3. Characterize the Error Rate (1 minute)
+### 4. APM: Characterize the Error Rate (1 minute)
 
 In **APM → paymentservice → Summary**, observe the error rate.
 
@@ -54,50 +64,20 @@ You'd see:
 - An error rate in the 20–30% range — neither 0% nor 100%
 - Throughput looks normal — the service is receiving and processing requests
 
-**Key insight:** A non-zero, sub-100% error rate means an intermittent fault, not a total outage. The service is reachable and handling most requests — only a fraction fail. This rules out connectivity issues and points toward something inside the service logic.
+**Key insight:** A non-zero, sub-100% error rate means an intermittent fault, not a total outage. The service is reachable and handling most requests — only a fraction fail. This rules out connectivity issues (like Incident 2) and points toward something inside the service logic.
 
 ---
 
-### 4. Errors Inbox: Confirm the Pattern (2 minutes)
+### 5. APM Errors: Identify the Failing Transaction (1 minute)
 
-Go to **Errors Inbox** and filter by `paymentservice`.
+Click into the **Errors** tab within `paymentservice` APM.
 
-You'd find a single error group with a consistent message. Look at the **occurrence graph**:
-- Errors are occurring steadily over time — not a single burst
-- The frequency matches the observed APM error rate
+You'd find:
+- A single error group tied to the `ChargeRequest` transaction
+- The error message indicates payment failures originating inside the service itself
+- The occurrence pattern is steady over time — not a single burst, but a consistent rate
 
-**Why Errors Inbox is ideal here:** It collapses all the intermittent failures into one error group, showing you frequency and trend at a glance — instead of hunting through individual trace records.
-
----
-
-### 5. Distributed Tracing: Confirm Location and Randomness (2 minutes)
-
-In **APM → paymentservice → Distributed Tracing**, filter for traces with errors.
-
-Open a **failing trace** and a **successful trace** side by side:
-
-**Failing trace:**
-```
-checkout  →  paymentservice [ERROR]
-                 └── ChargeRequest
-                       status: Error
-                       error.message: "Payment declined"
-                       app.payment.amount: $42.00
-```
-
-**Successful trace:**
-```
-checkout  →  paymentservice [OK]
-                 └── ChargeRequest
-                       status: OK
-                       app.payment.amount: $18.50
-```
-
-Comparing the two, you'd notice:
-- The failing span is inside `paymentservice` itself — not a connectivity issue from `checkout`
-- The `app.payment.amount` attribute differs between traces, but failures don't correlate to any particular amount — the pattern appears random
-
-**Key insight:** The error is generated inside `paymentservice`'s own processing logic. The service is reachable and receiving requests — something inside it is intermittently rejecting charges.
+**Why this confirms the root cause:** The error is on `paymentservice`'s own transaction, not a connection error from an upstream caller. The service is reachable and processing requests, but intermittently failing its own charge logic. Combined with the ~25% error rate from Step 4, you have a clear picture: a systematic internal fault affecting a fraction of all charges.
 
 ---
 
@@ -105,11 +85,11 @@ Comparing the two, you'd notice:
 
 | Step | Tool | Finding |
 |------|------|---------|
-| Alert triage | Workload | `checkout` and `paymentservice` both degraded |
-| Find root service | APM Summary | `paymentservice` is furthest downstream with errors |
-| Characterize rate | APM Error % | ~20–30% error rate — intermittent, not total outage |
-| Confirm pattern | Errors Inbox | Single error group, consistent frequency over time |
-| Confirm location | Distributed Tracing | Error inside `paymentservice.ChargeRequest`, pattern is random |
+| Read the alert | Alert details | High error rate on payment flow, start time established |
+| See blast radius | Workload | `checkout` and `paymentservice` both degraded |
+| Find root service | APM error rates | `paymentservice` is furthest downstream with errors |
+| Characterize rate | APM Summary | ~20–30% error rate — intermittent, not total outage |
+| Identify transaction | APM Errors | `ChargeRequest` failing internally, steady pattern |
 
 **Total time to root cause: ~5 minutes**
 
@@ -117,11 +97,11 @@ Comparing the two, you'd notice:
 
 ## Key Takeaways
 
-- **Start at the alert, then go downstream.** When multiple services are degraded, the root cause is usually the furthest downstream service showing errors — not the first one the alert fires on.
+- **Start at the alert.** The alert tells you what triggered, which entity is affected, and when. It's the fastest way to orient yourself — don't skip it.
+- **Use the Workload for blast radius.** Before diving into any one service, see which entities are degraded. This prevents tunnel vision on the wrong service.
+- **Follow errors downstream.** When multiple services show errors, the root cause is usually the furthest downstream service — errors propagate upstream through the call chain.
 - **Intermittent ≠ coincidence.** A consistent ~25% error rate means a systematic issue, not random bad luck. Sub-100% error rate is the key signal that rules out a total outage.
-- **Errors Inbox turns noise into signal.** Instead of reading hundreds of individual traces, Errors Inbox groups them and shows you trend and frequency immediately.
-- **Trace comparison unlocks insights.** Putting a failing trace next to a successful trace highlights exactly what differs — the most efficient way to test for correlations.
-- **Error location matters.** An error on `paymentservice`'s own span means the service is reachable and processing requests, but failing internally. This is different from a connection error on the *caller's* span, which would mean the service was unreachable (as seen in Incident 2).
+- **Error location matters.** An error on `paymentservice`'s own transaction means the service is reachable but failing internally. This is different from a connection error on the *caller's* side, which would mean the service was unreachable (as seen in Incident 2).
 
 ## ⛔ Wait Before Continuing
 
@@ -133,7 +113,6 @@ Remember: **you want to have all info you can before triggering an incident**, o
 BETA NOTES — Incident 4 Golden Path
 
 - Verify asset renders: random-payment-failure-chart.png
-- Validate NRQL attribute name (`otel.status_code` vs `span.status_code`) and value case in the live environment
-- Verify `app.payment.amount` is actually emitted in OTel spans; if missing, Step 5's correlation analysis collapses
 - The "~20–30%" error rate here should align to whatever value the check script accepts
+- Confirm the exact transaction name in APM Errors tab matches "ChargeRequest" or update accordingly
 -->
